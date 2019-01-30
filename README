@@ -1,0 +1,133 @@
+User Similarity Project
+Fanchao Meng 2018 summer
+
+1. Objectives:
+The main objective of this project is to make a comparison between two given 
+users. In other words, we would like to have a method to compute the
+similarity between users. Though, this similarity is not easy to be rigorously
+defined, because it could be defined from many different perspectives. In this
+project, the user similarity would reflect how similar two users are w.r.t.
+the text that they post. In the GitHub data, since every piece of text is
+tightly associated to a certain event, such as commit, and we take nearly all
+events into consideration, then we expect that these text would provide strong
+evidence of how GitHub users interact with others. 
+
+2. Pipeline:
+- Stage 1: Text Collection
+  Now that what we majorly concern is text, then collecting users' text from
+  the original data set is naturally the first step. We collect text from the
+  following events defined by the GitHub data set: CommitCommentEvent,
+  CreateEvent, IssueCommentEvent, PullRequestEvent, ReleaseEvent and
+  PullRequestReviewCommentEvent. There in fact is another important text
+  source event, PushEvent, but we do not take it into account. The reason is
+  that a PushEvent will be issued by a GitHub user; however, this user may not
+  be the one who actually contributes the submission. As a result, the text
+  from PushEvent may not precisely reflect the behaviors of the person who
+  issues it. To avoid further misleading info, we rule this type of events
+  out. The key fields for a text record are user id, text body, event type and 
+  date. Currently, we did not concern event type too much, though it may
+  provide more relevant info for computing user similarities. We can put it
+  into future work.
+
+- Stage 2: Text Clean Up
+  The main purpose of this stage is to extract regular human understandable
+  sentences from the data. This stage is actually a tough task, because there
+  is no general method that could make this job done in a perfect way.
+  Text clean-up should always be done case by case. By observation, in the
+  GitHub text data, the most commonly seen text include code, logs, commands
+  and ill-formatted or ill-written sentences. From our statistical
+  observation, very long text may likely contain copy-paste code or logs in a 
+  great chance. On the other hand, very short text may not be meaningful
+  either, because they could hardly be serious sentences, and sometimes they
+  are nothing more than emojis. In our current implementation, we only take
+  text in the range of lengths between 15 and 500 characters into account.
+  This range is relatively easy to handle, since they are more likely to be
+  regular sentences. The range between 500 and 1000 actually also contains a
+  lot of good sentences, but much more noise will be there as well. As a
+  suggestion, text beyond these two ranges may not be very important to
+  concern. When doing the clean-up, a number of tricks have been introduced
+  into the procedure, including BeautifulSoup+lxml, word length checking, url removal,
+  quotes removal, brackets removal, non-ascii char removal and so on.
+  Particularly, lxml is sort of necessary due to the default parser being
+  unable to parse some text in the GitHub data. The output of this stage for a
+  given data record is a set of sentences, each of which consists of only
+  English-letter strings, ',', '-' and '.'. Inevitably, some incomplete
+  sentences would appear in the results. Some non-English tokens may be
+  preserved, and consecutive punctuations may be left alone as well. However,
+  these flaws would not affect the succeeding stages a lot, and most of them
+  will be removed in our resulting parse trees. 
+
+- Stage 3: Sentence Annotations
+  In this stage, clean sentences will be annotated with POS tags, NER tags,
+  lemmas as well as constituency-based parse trees. Standford CoreNLP is play 
+  the key role here. So far it is still the best choice for these annotation 
+  jobs. We run CoreNLP as a server, and each annotation task will be sent to 
+  it by a client. From our tests, the server is fairly stable under intense
+  parallel requests. The server port is set to 9000, and can be changed from
+  the config file. The following annotators are equipped with the server,
+  'tokenize', 'ssplit', 'pos', 'lemma', 'ner' and 'parse'. One should be
+  noticed that there is no default stopword annotator in CoreNLP. I added a
+  stopword annotator module in my implementation; however, it is not working
+  in the C/S mode, only in the local mode. The stopwords somehow will be
+  removed before the similarities are computed. This step has been integrated
+  into the parse tree stage. The ones who would like to use the stopword
+  annotator earlier than the parse tree stage need to implement a
+  server-version annotator. 
+  Clients will be running with multithreading. For each text record read from
+  the database obtained from Stage 2, we create a client for annotating the
+  text. Each text record may contain multiple sentences. Each token in a
+  sentence will be annotated with the POS tag, NER tag and the lemma, if any.
+  The constituency-based parse tree will be computed for each sentence. In my
+  implementation, DeToken and DeSentence these two classes are designed for
+  annotated tokens and sentences. Annotated sentences will be stored back into
+  the database. There is a field named as 'tagged_text' which is used for
+  retrieving those annotations, and another field named as 'parse_trees' which
+  stores all constituency-based parse trees. Since the parse trees may
+  contain numerous unnecessary info, then I make them pruned before writing
+  back to the database. The major tasks of the pruning are removing
+  unnecessary constituents in parse trees and compressing paths. In
+  DeSentence.java, there is a list of constituent tags in concern. One can
+  customize this list to add or remove tags. The path compression will be
+  applied to "long paths" which mean chains. The reason we do it in this way
+  is that if a phrase contains only one constituent then it would hardly be a
+  phrase anymore. Then we do the cascading cuts from bottom to top. The parse
+  trees are stored in the format of tree strings which is defined by CoreNLP.
+  NLTK has a Tree class which is compatible with this format, except that
+  CoreNLP supports empty trees with only the root node, like this, 'ROOT',
+  whereas NLTK does not. By default, the leaves of parse trees are all tokens
+  without any additional info. However, this format is not so friendly to
+  tree-based models, because models would always need additional info for the
+  tokens. Also, now that our stored trees are pruned, then token indices may
+  not be helpful for retrieving the original tokens. For these reasons, our
+  stored trees will be attached with additional info, such as tags and synset
+  ids, to leaves. This format of parse trees is much more convenient for
+  models that require both tags and trees. For those who do not need parse
+  trees, they can use the tagged sentences instead.  
+  There are some issues when annotating sentences. Since we have 32 months
+  text data from over 12 millions users, the annotation job definitely cannot
+  be a quick one. So far our cleaned text data is 20GB. Any operation on this
+  database is not trivial. A good news is that an indexing built on 'user_id'
+  and 'time' does benefit us a lot. On Sqlite, the indexing is around 8GB.
+  Another issue is Babelfy. For each individual user, Babelfy can only provide
+  50,000 queries per day. Each query will be one sentence. However, this
+  number is way far from satisfying our need. Quite a number of GitHub
+  users in our cleaned text database have more than 10,000 distinct text
+  records, and each text record may have multiple sentences. You do the math.
+  Unless we could clear up this obstacle, Babelfy is not appropriate enough
+  for large projects. As a solution, we introduce NASARI for computing word
+  similarities. NASARI extends word level semantics by utilizing BabelNet and
+  Wikipedia. In their lexical vector model and unified vector model, each
+  synset is represented by a vector. The lexical vector model is built on
+  lemmas, while the unified vector model is built on synsets. The dimensions
+  in these two models may be varying. Additionally,another model named as the 
+  embedded vector model, which has fixed dimensions, 300, provides a
+  representation for both words and synsets. The format of this model is
+  compatible with the word2vect model, and we can use gensim to load the
+  pre-trained model in. One thing needs to be clarified is that this model is
+  not literally a word2vect model. It "combines" a word2vect model trained on
+  the UMBC corpus and their lexical model. The best part of NASARI is this
+  embedded model. By using this model, we do not have to retrieve the synset
+  of each word before computing the word similarity. The performance is
+  reported to be similar as ADW. This is what we are using in our currently
+  implementation.
+  
