@@ -128,13 +128,14 @@ public class DeSentence
             DeToken token = m_l_tokens.get(leaves.indexOf(leaf));
             List<String> synset = token.synset();
             int t_idx = token.index();
+            String ner = token.ner();
             if(synset != null && synset.size() != 0)
             {
-                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + String.join("+", synset) + "#" + t_idx));
+                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + String.join("+", synset) + "#" + t_idx + "|" + ner));
             }
             else
             {
-                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + "" + "#" + t_idx));
+                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + "" + "#" + t_idx + "|" + ner));
             }
         }
         //System.out.println("[DBG]: getTaggedTree: " + m_tagged_tree.toString());
@@ -213,6 +214,10 @@ public class DeSentence
         if (ret < 0)
         {
             ret = Arrays.binarySearch(m_constituent_tags_inits, tag.charAt(0));
+            //if(ret < 0)
+            //{
+            //    System.out.println("[DBG]: tag is not found: " + tag);
+            //}
             return (ret < 0) ? false : true;
         }
         return true;
@@ -226,13 +231,23 @@ public class DeSentence
     //   some other scenarios.
     public boolean isValidToken(String token)
     {
-        String regex = "[a-zA-Z-.']*#?(\\d{8}[a-z]{1})?(\\+\\d{8}[a-z]{1})*#[0-9]*";
+        String regex = "[a-zA-Z-.']*#?(\\d{8}[a-z]{1})?(\\+\\d{8}[a-z]{1})*#[0-9]*\\|[a-zA-Z]*";
         boolean ret = token.matches(regex);
         //if(!ret)
         //{
         //    System.out.println("[DBG]: " + token + " doesn't match!");
         //}
         return ret;
+    }
+
+    public boolean isPerson(String token)
+    {
+        String ner = token.split("\\|")[1];
+        if(ner == null)
+        {
+            return false;
+        }
+        return ner.equalsIgnoreCase("PERSON");
     }
 
     // prune an input tagged constituent tree
@@ -257,7 +272,9 @@ public class DeSentence
         // otherwise, we return c_tree intact.
         if(c_tree.isLeaf())
         {
-            if(isStopword(c_tree.value().substring(2).split("#")[0]) || !isValidToken(c_tree.value().substring(2)))
+            if(isStopword(c_tree.value().substring(2).split("#")[0]) 
+                || !isValidToken(c_tree.value().substring(2)) 
+                || isPerson(c_tree.value().substring(2)))
             {
                 // N.B. at this point, since a Tree cannot remove itself, then
                 // we have to return null back its parent, then its parent will
@@ -267,6 +284,12 @@ public class DeSentence
             }
             else
             {
+                // DBG
+                //System.out.println("[DBG]: c_tree value = " + c_tree.value());
+                //System.out.println("[DBG]: set c_tree = " + c_tree.value().split("\\|")[0]);
+                c_tree.setValue(c_tree.value().split("\\|")[0]);
+                // DBG
+                //System.out.println("[DBG]: c_tree = " + c_tree.value());
                 return c_tree;
             }
         }

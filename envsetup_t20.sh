@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# User specific aliases and functions
+# DO NOT change the classpath order!!!
+
+export CLASSPATH="$CLASSPATH:.:./bin/"
+for file in `find /home/fcmeng/PycharmProjects/stanford/stanford-corenlp-full-2018-10-05  -name "*.jar"`; do export CLASSPATH="$CLASSPATH:`realpath $file`"; done 
+for file in `find /home/fcmeng/workspace/doc_clustering_proj/lib  -name "*.jar"`; do export CLASSPATH="$CLASSPATH:`realpath $file`"; done 
+#for file in `find /home/fcmeng/babel/lucene-7.4.0 -name "*.jar"`; do export CLASSPATH="$CLASSPATH:`realpath $file`"; done
+#for file in `find /home/fcmeng/babel/Babelfy-online-API-1.0 -name "*.jar"`; do export CLASSPATH="$CLASSPATH:`realpath $file`:/home/fcmeng/babel/Babelfy-online-API-1.0/config"; done
+#for file in `find /home/fcmeng/babel/BabelNet-API-4.0.1 -name "*.jar"`; do export CLASSPATH="$CLASSPATH:`realpath $file`:/home/fcmeng/babel/BabelNet-API-4.0.1/config"; done
+#export CLASSPATH="$CLASSPATH:/home/fcmeng/adw/ADW-master/jar/*"
+export _JAVA_OPTIONS="-Djava.net.preferIPv4Stack=true"
+#module load Java/1.8.0_162
+#module load pip
+#pip install --user idna

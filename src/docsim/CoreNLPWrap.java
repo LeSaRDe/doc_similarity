@@ -93,8 +93,8 @@ public class CoreNLPWrap
             m_online = true;
             m_client = new StanfordCoreNLPClient(m_props, 
                 Constants.CORENLP_SERV_HOSTNAME,
-                m_curr_port_seed + 9000, 
-                //Constants.CORENLP_SERV_PORT,
+                //m_curr_port_seed + 9000, 
+                Constants.CORENLP_SERV_PORT,
                 Constants.CORENLP_CLIENT_THREAD);
             Annotation annodoc = new Annotation(in_txt);
             m_client.annotate(annodoc);
