@@ -151,6 +151,7 @@ class AnnotateText
                     st = m_db_conn.createStatement();
                     rs = st.executeQuery(query_str);
                 }
+                System.out.println("[DBG]: current doc_id = " + m_l_docids.get(i));
                 AnnotateTextTask new_task = new AnnotateTextTask(this, m_db_conn,
                             new AnnotateTextRec(m_l_docids.get(i), rs.getString("pre_ner"), null, null));
                 m_l_utask.add(new_task);

@@ -17,7 +17,9 @@ class AnnotateTextTask extends Thread
         m_utin = utin;
         m_ref_db_conn = ref_db_conn;
         m_in_utrec = in_utrec;
-        m_corenlp = new CoreNLPWrap(m_in_utrec.getprenertext(), true);
+        //m_corenlp = new CoreNLPWrap(m_in_utrec.getprenertext(), true);
+        // we use the constructor of CoreNLPWrap below for 20news18828.
+        m_corenlp = new CoreNLPWrap(m_in_utrec.getprenertext());
     }
 
     public void setAnnotateTextRec(AnnotateTextRec in_utrec)

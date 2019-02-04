@@ -32,7 +32,7 @@ public class CoreNLPWrap
     // CoreNLP pipeline instance
     private StanfordCoreNLP m_pipeline;
     // sentences parsed from the input text
-    private List<CoreSentence> m_sentences;
+    private ArrayList<CoreSentence> m_sentences;
     // output sentenses
     private List<DeSentence> m_desentences;
     // switch for online/offline run
@@ -100,7 +100,47 @@ public class CoreNLPWrap
             m_client.annotate(annodoc);
             coredoc = new CoreDocument(annodoc);
         }
-        m_sentences = coredoc.sentences();
+        m_sentences = new ArrayList<CoreSentence>(coredoc.sentences());
+        m_desentences = new ArrayList<DeSentence>();
+        for(CoreSentence sent : m_sentences)
+        {
+            m_desentences.add(new DeSentence(sent.text()));
+        }
+    };
+
+    // this constructor is only for 20news18828 dataset
+    // due to the code-text issue, we need to split a 'pre_ner'
+    // text into sentences by '\n' manually. it means that 
+    // sometimes corenlp couldn't split the text correctly,
+    // and results in out-of-memory or timeout errors. 
+    public CoreNLPWrap(String in_text)
+    {
+        m_props = new Properties();
+        m_props.setProperty("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
+        //int port = 9000 + ThreadLocalRandom.current().nextInt(0, 6);
+        m_curr_port_seed += 1;
+        m_curr_port_seed %= 4;
+        m_online = true;
+        String[] l_in_text_sents = in_text.split("\n");
+        System.out.println("[DBG]: l_in_text_sents len = " + l_in_text_sents.length);
+        
+        m_client = new StanfordCoreNLPClient(m_props, 
+            Constants.CORENLP_SERV_HOSTNAME,
+            //m_curr_port_seed + 9000, 
+            Constants.CORENLP_SERV_PORT,
+            Constants.CORENLP_CLIENT_THREAD);
+        m_sentences = new ArrayList<CoreSentence>();
+
+        for(int i=0; i < l_in_text_sents.length; i++)
+        {
+            String in_text_sent = l_in_text_sents[i];
+            //System.out.println("[DBG]: current sent = " + in_text_sent);
+            Annotation annodoc = new Annotation(in_text_sent);
+            m_client.annotate(annodoc);
+            CoreDocument coredoc = new CoreDocument(annodoc);
+            m_sentences.addAll(coredoc.sentences());
+        }
+
         m_desentences = new ArrayList<DeSentence>();
         for(CoreSentence sent : m_sentences)
         {
