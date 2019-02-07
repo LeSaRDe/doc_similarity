@@ -134,9 +134,14 @@ public class CoreNLPWrap
         for(int i=0; i < l_in_text_sents.length; i++)
         {
             String in_text_sent = l_in_text_sents[i];
-            //System.out.println("[DBG]: current sent = " + in_text_sent);
+            if(in_text_sent == null || in_text_sent.length() == 0)
+            {
+                continue;
+            }
+            System.out.println("[DBG]: current sent = " + in_text_sent);
             Annotation annodoc = new Annotation(in_text_sent);
             m_client.annotate(annodoc);
+            System.out.println("[DBG]: current sent done! = " + in_text_sent);
             CoreDocument coredoc = new CoreDocument(annodoc);
             m_sentences.addAll(coredoc.sentences());
         }
