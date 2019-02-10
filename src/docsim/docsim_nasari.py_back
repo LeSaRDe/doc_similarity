@@ -7,12 +7,13 @@ import networkx as nx
 # import matplotlib.pyplot as plt
 import math
 import multiprocessing
-# import ctypes
+import ctypes
 import sqlite3
-# import random
-# import sys
-import re
+import random
+import sys
 import os
+import psutil
+import fcntl
 import json
 
 #(ROOT (S (NP (NP (NNP Align#[00464321v]) (, ,) (NNP Disambiguate#[00957178v]) (, ,) ) (CC and) (NP (NP (VB Walk#[01904930v])) (PRN (-LRB- -LRB-) (NP (NN ADW)) (-RRB- -RRB-)))) (VP (VBZ is) (NP (NP (DT a) (JJ WordNet-based) (NN approach#[00941140n])) (PP (IN for) (S (VP (VBG measuring#[00647094v]) (NP (NP (JJ semantic#[02842042a]) (NN similarity#[04743605n])) (PP (IN of) (NP (NP (JJ arbitrary#[00718924a]) (NNS pairs#[13743605n])) (PP (IN of) (NP (JJ lexical#[02886629a]) (NNS items#[03588414n]))) (, ,) (PP (IN from) (NP (NN word#[06286395n]) (NNS senses#[03990834n])))))) (PP (TO to) (NP (JJ full#[01083157a]) (NNS texts#[06387980n, 06388579n])))))))) (. .)))
@@ -35,20 +36,19 @@ SEND_ADDR_NASARI = 'localhost'
 # the other option is 'adw'
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
-DB_CONN_STR = '/home/fcmeng/workspace/data/20news18828_nice.db'
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/intermediates_20news/'
+DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/intermediates/'
 MAX_PROC = 12
-PROC_BATCH_SIZE = 2
+PROC_BATCH_SIZE = 24
 
 SAVE_CYCLES = False
 
-PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 
 # this function takes a tree string and returns the graph of this tree
 # the format of the input tree string needs follow the CoreNLP Tree def.
 # this format is compatible with NLTK Tree.
 # the graph is introduced from NetworkX.
-# leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]#[ner]:[uni_idx]
+# leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]:[uni_idx]
 def treestr_to_graph(treestr, id):
     ret_graph = nx.Graph()
     tree = Tree.fromstring(treestr)
@@ -73,7 +73,7 @@ def treestr_to_graph(treestr, id):
                     offset_tags = []
                 else:
                     offset_tags = word_n_tags[1].split('+')
-                token_index = word_n_tags[2].strip()
+                token_index = word_n_tags[2]
                 ret_graph.add_node(end, type='leaf', tags = offset_tags, idx = token_index)
             else:
                 ret_graph.add_node(end, type='node')
@@ -107,35 +107,13 @@ def identifyNodes(t, idx):
             t[index] = newVal
         NODE_ID_COUNTER += 1
 
-# given a leaf in a parse tree, this function returns True
-# if this leaf has a significant NER tag, such as ORGANIZATION,
-# LOCATION and MISC; otherwise returns False.
-def has_preserved_ner(leaf_str):
-    tags = leaf_str.split(':')[2]
-    ner = tags.split('#')[3].strip()
-    if ner in PRESERVED_NER_LIST:
-        return True
-    return False
-
-# given a leaf in a parse tree, this function returns 
-# the lowercased word (word itselft without any tags)
-# if the word is not of any preserved NER; otherwise
-# returns the original word without the lowercase convertion.
-def lowercase_word_by_ner(leaf_str):
-    tags = leaf_str.split(':')[2]
-    ner = tags.split('#')[3].strip()
-    word = tags.split('#')[0].strip()
-    if has_preserved_ner(leaf_str):
-        return word.lower()
-    else:
-        return word
 
 def send_wordsim_request(mode, input_1, input_2):
     global SEND_PORT_ADW
     global SEND_PORT_NASARI
     global SEND_ADDR_ADW
     global SEND_ADDR_NASARI
-   
+
     c_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     c_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -205,13 +183,11 @@ def find_inter_edges(tree_1, tree_2):
     for leaf_1 in leaves_1:
         #print "[DBG]: leaf_1 str = " + leaf_1[0]
         synset_1 = leaf_1[1]['tags']
-        word_1 = lowercase_word_by_ner(leaf_1[0])
-        #word_1 = leaf_1[0].split(':')[2].split('#')[0].strip()
+        word_1 = leaf_1[0].split(':')[2].split('#')[0].strip()
         for leaf_2 in leaves_2:
             sim = float(0)
             synset_2 = leaf_2[1]['tags']
-            word_2 = lowercase_word_by_ner(leaf_2[0])
-            #word_2 = leaf_2[0].split(':')[2].split('#')[0].strip()
+            word_2 = leaf_2[0].split(':')[2].split('#')[0].strip()
             if WORD_SIM_MODE == 'adw':
                 if len(synset_1) > 0 and len(synset_2) > 0:
                     sim = send_wordsim_request('oo', synset_1, synset_2)
@@ -289,12 +265,9 @@ def find_shortest_path(g1, g2, sub_nodes1, sub_nodes2):
 
 
 def write_intermedia_to_file(doc1_id, doc2_id, json_data):
-    fname = OUT_CYCLE_FILE_PATH + "%s#%s.json" % (doc1_id.replace('/','_'), doc2_id.replace('/','_'))
+    fname = OUT_CYCLE_FILE_PATH + "%s#%s.json" % (doc1_id, doc2_id)
     with open(fname, 'w+') as outfile:
-        try:
-            json.dump(json_data, outfile, indent=4)
-        except:
-            outfile.write(json_data)
+        json.dump(json_data, outfile, indent=4)
     outfile.close()
 
 
@@ -342,19 +315,19 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
                     pre_cycle_basis.append(cc)
                     #print "[DBG]: add cc to pre_cycle_basis: "
                     #print pre_cycle_basis
-                #else:
-                    #print "[ERR]: Already has this cycle:"
-                    #print cc
-                    #print "[ERR]: Invalid cycle = "
-                    #print b
-                    #print "[ERR]: Leaves 1 = "
-                    #print sub_s1
-                    #print "[ERR]: Leaves 2 = "
-                    #print sub_s2
-                    #print "[ERR]: Current min_cycle_basis = "
-                    #print min_cycle_basis
-                    #print "[ERR]: Current pre_cycle_basis = "
-                    #print pre_cycle_basis
+                else:
+                    print "[ERR]: Already has this cycle:"
+                    print cc
+                    print "[ERR]: Invalid cycle = "
+                    print b
+                    print "[ERR]: Leaves 1 = "
+                    print sub_s1
+                    print "[ERR]: Leaves 2 = "
+                    print sub_s2
+                    print "[ERR]: Current min_cycle_basis = "
+                    print min_cycle_basis
+                    print "[ERR]: Current pre_cycle_basis = "
+                    print pre_cycle_basis
         else:
             min_cycle_basis.append(b)
             #print "[DBG]: add b to min_cycle_basis: "
@@ -380,33 +353,27 @@ def cal_cycle_weight(cycle, inter_edges):
                     inter_weight = link[2]["weight"]
 
     ret = arch_weight * inter_weight
-    return ret, s1_nodes["leaves"]+s2_nodes["leaves"]
+    return ret
 
 
 def sim_from_tree_pair_graph(inter_edges, graph, tree_1, tree_2):
     cycle_weights = []
-    words_with_tags = []
     if len(inter_edges) < 2:
-        return 0, [], []
+        return 0, []
     min_cycle_basis = find_min_cycle_basis(graph, tree_1, tree_2)
     for cycle in min_cycle_basis:
         if len(cycle) < 3:
             print "[ERR]: Invalid cycle in the basis: "
             print cycle
             continue
-        cw, leaves = cal_cycle_weight(cycle, inter_edges)
+        cw = cal_cycle_weight(cycle, inter_edges)
         cycle_weights.append(cw)
-        words_with_tags = words_with_tags + leaves
-    return sum(cycle_weights), min_cycle_basis, words_with_tags
+    return sum(cycle_weights), min_cycle_basis
 
 
 def sent_pair_sim(sent_treestr_1, sent_treestr_2):
     tp_graph, inter_edges, tree_1, tree_2 = treestr_pair_to_graph(sent_treestr_1, sent_treestr_2, 's1', 's2')
-    sim, min_cycle_basis, words_with_tags = sim_from_tree_pair_graph(inter_edges, tp_graph, tree_1, tree_2)
-    words = []
-    for word in words_with_tags:
-        words.append(lowercase_word_by_ner(word))
-        #words.append(re.split('[:#]', word)[2])
+    sim, min_cycle_basis = sim_from_tree_pair_graph(inter_edges, tp_graph, tree_1, tree_2)
     # pid = os.getpid()
     # proc = psutil.Process(pid)
     #print "[DBG]: sent_pair_sim before term"
@@ -414,12 +381,12 @@ def sent_pair_sim(sent_treestr_1, sent_treestr_2):
     #print "[DBG]: sent_pair_sim after term"
     if sim != 0:
         print "----------------------------------------"
-        #print "[DBG]: sent 1 = " + sent_treestr_1
-        #print "[DBG]: sent 2 = " + sent_treestr_2
-        print "[DBG]: sent sim = " + str(sim)
+        print "[DBG]: sent 1 = " + sent_treestr_1
+        print "[DBG]: sent 2 = " + sent_treestr_2
+        print "[DBG]: sim = " + str(sim)
     else:
-        return 0, [], words
-    return sim, min_cycle_basis, words
+        return 0, []
+    return sim, min_cycle_basis
 
 
 def sim_procs_cool_down(l_sim_proc):
@@ -447,36 +414,23 @@ def doc_pair_sim(doc1, doc2):
     if l_sent_treestr_1 is None or l_sent_treestr_2 is None or len(l_sent_treestr_1) == 0 or len(l_sent_treestr_2) == 0:
         print "[ERR]: Invalid input doc!"
         #print "create process: " + str(p.pid)
+        #print "create process: " + str(p.pid)
+        #print "create process: " + str(p.pid)
+        print "create process: " + str(p.pid)
         return 0
     #print "[DBG]: parent pid = " + str(os.getpid())
-    # if SAVE_CYCLES:
-    #     out_json = {'sim':0.0, 'sentence_pair':{}}
-    # else:
-    #     out_json = []
-    doc_sim = 0.0
-    sentence_pair = dict()
-    doc_word_list = []
+    out_json = {'sim':0.0, 'sentence_pair':{}}
     for doc1_s_id, sent_treestr_1 in enumerate(l_sent_treestr_1):
         for doc2_s_id, sent_treestr_2 in enumerate(l_sent_treestr_2):
             #TODO:
-            sim_res, min_cycle_basis, word_list = sent_pair_sim(sent_treestr_1, sent_treestr_2)
+            sim_res, min_cycle_basis = sent_pair_sim(sent_treestr_1, sent_treestr_2)
             if sim_res != 0:
-                doc_sim += sim_res
                 if SAVE_CYCLES:
-                    sent_pair_sim_cycles = {'cycles': min_cycle_basis, 'sim': sim_res}
-                    sentence_pair["%s-%s" % (doc1_s_id, doc2_s_id)] = sent_pair_sim_cycles
-                doc_word_list = doc_word_list + word_list
-                # if SAVE_CYCLES:
-                #     sent_pair_sim_cycles = {'cycles':min_cycle_basis, 'sim':sim_res}
-                #     out_json['sim'] += sim_res
-                #     out_json['sentence_pair']["%s-%s" % (doc1_s_id, doc2_s_id)] = sent_pair_sim_cycles
-                # else:
-                #     out_json[0] += sim_res
-                #     out_json[1] = out_json[1].append(word_list)
-    if SAVE_CYCLES:
-        out_json = {'sim': doc_sim, 'sentence_pair': sentence_pair, 'word_list': set(doc_word_list)}
-    else:
-        out_json = [doc_sim, ','.join(set(doc_word_list))]
+                    sent_pair_sim_cycles = {'cycles':min_cycle_basis, 'sim':sim_res}
+                    out_json['sim'] += sim_res
+                    out_json['sentence_pair']["%s-%s" % (doc1_s_id, doc2_s_id)] = sent_pair_sim_cycles
+                else:
+
     write_intermedia_to_file(doc1[0],doc2[0], out_json)
     # with open('/home/fcmeng/workspace/doc_pair_sim/%s-%s' % (, 'a+') as f_out:
     #     json.dumps(out_json,f_out)
@@ -546,36 +500,32 @@ def validate_doc_trees(doc1_tree, doc2_tree):
 
 # this function compute the text similarity between two users given a text data within a specified period for each user.
 def text_sim(db_cur):
-    db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id limit 2')
+    db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null')
     #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '0' OR doc_id = '9'")
     rows = db_cur.fetchall()
-    total_doc_pair_count = (len(rows)*(len(rows)-1))/2
-    print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 
     sim_procs = []
     proc_id = 0
     proc_batch = 0
-    for i, doc1 in enumerate(rows):
-        for j, doc2 in enumerate(rows):
+    for i, doc1 in rows:
+        for j, doc2 in rows:
             if i<j:
-                valid_doc1, valid_doc2 = validate_doc_trees(doc1[1], doc2[1])
-                p = multiprocessing.Process(target=doc_pair_sim, args=((doc1[0],valid_doc1), (doc2[0],valid_doc2)))
+                valid_doc1, valid_doc2 = validate_doc_trees(doc1, doc2)
+                p = multiprocessing.Process(target=doc_pair_sim, args=((i,valid_doc1), (j,valid_doc2)))
                 proc_id += 1
                 sim_procs.append(p)
                 p.start()
                 if proc_id >= PROC_BATCH_SIZE:
                     proc_batch += 1
                     proc_id = 0
-                    #print "[DBG]: task count = " + str(proc_batch * PROC_BATCH_SIZE + proc_id)
-                    #print "[DBG]: sim array ="
+                    print "[DBG]: task count = " + str(proc_batch * PROC_BATCH_SIZE + proc_id)
+                    print "[DBG]: sim array ="
                 if len(sim_procs) >= MAX_PROC:
                     # print "[DBG]: cool down 1"
                     sim_procs_cool_down(sim_procs)
-                    print "[INF]: {0:.0%} done!".format(float(proc_batch*PROC_BATCH_SIZE) / float(total_doc_pair_count))
                 # print "[DBG]: sim procs:" + str(len(sim_procs))
             # p.join()
         # print "[DBG]: cool down 2"
     sim_procs_cool_down(sim_procs)
-    print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count)/float(total_doc_pair_count))
 
 
     # print "[DBG]: total task: " + str(len(l_sent_treestr_1)*len(l_sent_treestr_2))
@@ -591,7 +541,7 @@ def main():
     # output_file = str(sys.argv[1]).strip()
     db_conn = sqlite3.connect(DB_CONN_STR)
     cur = db_conn.cursor()
-    text_sim(cur)
+    sim = text_sim(cur)
     # ret = '|'.join([str(sim)]) + '\n'
     # with open(output_file, 'a+') as f_out:
     #     fcntl.flock(f_out, fcntl.LOCK_EX)
@@ -599,7 +549,6 @@ def main():
     #     fcntl.flock(f_out, fcntl.LOCK_UN)
     #     f_out.close()
     db_conn.close()
-    print "ALL DONE!"
 #=========================================================
     #err_sent_tree = Tree.fromstring(err_sent_tree_str)
     #print err_sent_tree
@@ -644,9 +593,9 @@ def main():
     #print l_sent_treestr_1
     #print "----------------------------------------"
     #print l_sent_treestr_2
-    #print "----------------------------------------"
-    #print sim
-    #print "----------------------------------------"
+    print "----------------------------------------"
+    print sim
+    print "----------------------------------------"
 
 
     #plt.subplot(111)

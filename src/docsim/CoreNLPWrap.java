@@ -138,10 +138,10 @@ public class CoreNLPWrap
             {
                 continue;
             }
-            System.out.println("[DBG]: current sent = " + in_text_sent);
+            //System.out.println("[DBG]: current sent = " + in_text_sent);
             Annotation annodoc = new Annotation(in_text_sent);
             m_client.annotate(annodoc);
-            System.out.println("[DBG]: current sent done! = " + in_text_sent);
+            //System.out.println("[DBG]: current sent done! = " + in_text_sent);
             CoreDocument coredoc = new CoreDocument(annodoc);
             m_sentences.addAll(coredoc.sentences());
         }

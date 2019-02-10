@@ -18,7 +18,8 @@ class AnnotateTextEntry
             // we read in all doc_id's here then send them to AnnotateText to
             // be annotated in parallel.
             Connection db_conn = DriverManager.getConnection(Constants.ANNTXT_DB_CONNSTR); 
-            String query_str = String.format("SELECT doc_id FROM %s WHERE parse_trees is NULL ORDER BY doc_id", Constants.ANNTXT_DB_TB_DOCS);
+            //String query_str = String.format("SELECT doc_id FROM %s WHERE parse_trees is NULL ORDER BY doc_id", Constants.ANNTXT_DB_TB_DOCS);
+            String query_str = String.format("SELECT doc_id FROM %s ORDER BY doc_id LIMIT 2", Constants.ANNTXT_DB_TB_DOCS);
 
             // DBG
             //String query_str = String.format("SELECT pre_ner FROM docs where doc_id = 'sci.crypt/15823'");

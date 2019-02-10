@@ -131,11 +131,11 @@ public class DeSentence
             String ner = token.ner();
             if(synset != null && synset.size() != 0)
             {
-                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + String.join("+", synset) + "#" + t_idx + "|" + ner));
+                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + String.join("+", synset) + "#" + t_idx + "#" + ner));
             }
             else
             {
-                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + "" + "#" + t_idx + "|" + ner));
+                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + "" + "#" + t_idx + "#" + ner));
             }
         }
         //System.out.println("[DBG]: getTaggedTree: " + m_tagged_tree.toString());
@@ -201,7 +201,7 @@ public class DeSentence
     // check if the input word is a stopword
     public boolean isStopword(String word)
     {
-        int ret = Arrays.binarySearch(m_l_stopwords, word);
+        int ret = Arrays.binarySearch(m_l_stopwords, word.toLowerCase());
         //System.out.println("[DBG]: " + "binarySearch " + word + ":" + ret);
         return (ret < 0) ? false : true;
     }
@@ -231,7 +231,7 @@ public class DeSentence
     //   some other scenarios.
     public boolean isValidToken(String token)
     {
-        String regex = "[a-zA-Z-.']*#?(\\d{8}[a-z]{1})?(\\+\\d{8}[a-z]{1})*#[0-9]*\\|[a-zA-Z]*";
+        String regex = "[a-zA-Z-.']*#?(\\d{8}[a-z]{1})?(\\+\\d{8}[a-z]{1})*#[0-9]*#[a-zA-Z]*";
         boolean ret = token.matches(regex);
         //if(!ret)
         //{
@@ -242,7 +242,7 @@ public class DeSentence
 
     public boolean isPerson(String token)
     {
-        String ner = token.split("\\|")[1];
+        String ner = token.split("#")[3];
         if(ner == null)
         {
             return false;
@@ -287,7 +287,7 @@ public class DeSentence
                 // DBG
                 //System.out.println("[DBG]: c_tree value = " + c_tree.value());
                 //System.out.println("[DBG]: set c_tree = " + c_tree.value().split("\\|")[0]);
-                c_tree.setValue(c_tree.value().split("\\|")[0]);
+                //c_tree.setValue(c_tree.value().split("\\|")[0]);
                 // DBG
                 //System.out.println("[DBG]: c_tree = " + c_tree.value());
                 return c_tree;
