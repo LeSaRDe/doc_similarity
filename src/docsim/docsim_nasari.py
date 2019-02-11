@@ -27,7 +27,7 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.4
-WORD_SIM_THRESHOLD_NASARI = 0.3
+WORD_SIM_THRESHOLD_NASARI = 0.35
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -35,10 +35,12 @@ SEND_ADDR_NASARI = 'localhost'
 # the other option is 'adw'
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
-DB_CONN_STR = '/home/fcmeng/workspace/data/20news18828_nice.db'
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/intermediates_20news/'
+DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_35_rmsw_w3-3/'
+CYC_SIG_PARAM_1 = 3.0
+CYC_SIG_PARAM_2 = 3.0
 MAX_PROC = 12
-PROC_BATCH_SIZE = 2
+PROC_BATCH_SIZE = 12
 
 SAVE_CYCLES = False
 
@@ -370,7 +372,7 @@ def cal_cycle_weight(cycle, inter_edges):
         print "[ERR]: Sentence has more than 2 words in one cycle!"
     w1 = len(s1_nodes["tags"]) + 1
     w2 = len(s2_nodes["tags"]) + 1
-    arch_weight = math.exp(3.0 / (math.pow(w1, 2) + math.pow(w2, 2)))
+    arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
 
     inter_weight = 1
     for link in inter_edges:
@@ -413,10 +415,11 @@ def sent_pair_sim(sent_treestr_1, sent_treestr_2):
     # proc.terminate()
     #print "[DBG]: sent_pair_sim after term"
     if sim != 0:
-        print "----------------------------------------"
+        #print "----------------------------------------"
         #print "[DBG]: sent 1 = " + sent_treestr_1
         #print "[DBG]: sent 2 = " + sent_treestr_2
-        print "[DBG]: sent sim = " + str(sim)
+        #print "[DBG]: sent sim = " + str(sim)
+        pass
     else:
         return 0, [], words
     return sim, min_cycle_basis, words
@@ -546,7 +549,7 @@ def validate_doc_trees(doc1_tree, doc2_tree):
 
 # this function compute the text similarity between two users given a text data within a specified period for each user.
 def text_sim(db_cur):
-    db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id limit 2')
+    db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
     #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '0' OR doc_id = '9'")
     rows = db_cur.fetchall()
     total_doc_pair_count = (len(rows)*(len(rows)-1))/2
