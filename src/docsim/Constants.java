@@ -17,7 +17,7 @@ class Constants
     //static final String DB_TB_NAME = "tb_docsim";
     static final String ANNTXT_DB_TB_DOCS = "docs";
     //static final String WS_SERVER_HOSTNAME = "pegasus1";
-    static final String WS_SERVER_HOSTNAME = "discovery1";
+    static final String WS_SERVER_HOSTNAME = "localhost";
     //static final String WS_SERVER_HOSTNAME = "hswlogin1";
     static final String ANN_FILE_PREFIX = "/home/fcmeng/gh_data/ann_ret/ann_ret_";
     static final int ANNTXT_MAX_TASKS = 12;

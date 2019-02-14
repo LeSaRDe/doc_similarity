@@ -19,8 +19,13 @@ CLASSES = \
 		$(SRCPATH)/Constants.java \
 		$(SRCPATH)/CoreNLPWrap.java \
 		$(SRCPATH)/DeSentence.java \
-		$(SRCPATH)/DeToken.java
+		$(SRCPATH)/DeToken.java \
+		$(SRCPATH)/ADWWrap.java \
+		$(SRCPATH)/WordSimTask.java \
+		$(SRCPATH)/WordSimServer.java
 
+
+#		$(SRCPATH)/adwtest.java
 #		$(SRCPATH)/UserTextIn.java \
 #		$(SRCPATH)/UserTextInFile.java \
 #		$(SRCPATH)/UserTextRec.java \

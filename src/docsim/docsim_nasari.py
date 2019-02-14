@@ -27,18 +27,19 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.4
-WORD_SIM_THRESHOLD_NASARI = 0.35
+WORD_SIM_THRESHOLD_NASARI = 0.4
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
 # the other option is 'adw'
-WORD_SIM_MODE = 'nasari'
+#WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
+WORD_SIM_MODE = 'adw_tag'
 DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_35_rmsw_w3-3/'
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_40_rmswexpws_w3-2/'
 CYC_SIG_PARAM_1 = 3.0
-CYC_SIG_PARAM_2 = 3.0
+CYC_SIG_PARAM_2 = 2.0
 MAX_PROC = 12
 PROC_BATCH_SIZE = 12
 
@@ -50,7 +51,7 @@ PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 # the format of the input tree string needs follow the CoreNLP Tree def.
 # this format is compatible with NLTK Tree.
 # the graph is introduced from NetworkX.
-# leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]#[ner]:[uni_idx]
+# leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]#[ner]#[pos]:[uni_idx]
 def treestr_to_graph(treestr, id):
     ret_graph = nx.Graph()
     tree = Tree.fromstring(treestr)
@@ -153,6 +154,12 @@ def send_wordsim_request(mode, input_1, input_2):
         send_str = input_1 + '#' + input_2
         send_port = SEND_PORT_NASARI
         send_addr = SEND_ADDR_NASARI
+    elif mode == 'tt':
+        send_str = mode + '#' + input_1 + '#' + input_2
+        send_port = SEND_PORT_ADW
+        send_addr = SEND_ADDR_ADW
+    else:
+        raise Exception('[ERR]: Unsupported word comparison mode!')
 
     #while attemp < 10:
     #    try:
@@ -222,6 +229,19 @@ def find_inter_edges(tree_1, tree_2):
                         sim = 1
                 if sim > WORD_SIM_THRESHOLD_ADW:
                     edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter'}))
+            elif WORD_SIM_MODE == 'adw_tag':
+                # we use Java ADW word similarity server in this case
+                # it can compare any two words with one of the following tags
+                # the two words need not be of the same pos tag
+                pos_set = ['n', 'v', 'r', 'a']
+                tags_1 = leaf_1.split(':')[2]
+                pos_1 = tags_1.split('#')[4].strip()
+                tags_2 = leaf_2.split(':')[2]
+                pos_2 = tags_2.split('#')[4].strip()
+                if word_1 == word_2:
+                    sim = 1
+                else:
+                    sim = send_wordsim_request('tt', word_1+':'+pos_1, word_2+':'+pos_2)
             elif WORD_SIM_MODE == 'nasari':
                 if word_1 == word_2:
                     sim = 1
@@ -381,7 +401,9 @@ def cal_cycle_weight(cycle, inter_edges):
                 if link[2]["weight"] < inter_weight:
                     inter_weight = link[2]["weight"]
 
-    ret = arch_weight * inter_weight
+    #ret = arch_weight * inter_weight
+    ret = arch_weight * math.exp(inter_weight*2)
+    #print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(math.exp(inter_weight*4))
     return ret, s1_nodes["leaves"]+s2_nodes["leaves"]
 
 
@@ -437,6 +459,13 @@ def sim_procs_cool_down(l_sim_proc):
                 l_sim_proc.remove(proc)
     #print "[DBG]: done a cool-down."
 
+def count_cycles_and_record(doc_1, doc_2, cycle_count):
+    try:
+        outfile = open('/home/fcmeng/workspace/data/cycle_count.txt', 'a+')
+        outfile.write("{0}#{1}:{2}\n".format(doc_1, doc_2, cycle_count))
+        outfile.close()
+    except Exception as e:
+        print e
 
 def doc_pair_sim(doc1, doc2):
     # global RECV_PORT
@@ -459,12 +488,15 @@ def doc_pair_sim(doc1, doc2):
     doc_sim = 0.0
     sentence_pair = dict()
     doc_word_list = []
+    cycle_count = 0
     for doc1_s_id, sent_treestr_1 in enumerate(l_sent_treestr_1):
         for doc2_s_id, sent_treestr_2 in enumerate(l_sent_treestr_2):
             #TODO:
             sim_res, min_cycle_basis, word_list = sent_pair_sim(sent_treestr_1, sent_treestr_2)
+            cycle_count += len(min_cycle_basis)
             if sim_res != 0:
                 doc_sim += sim_res
+                # cycle count
                 if SAVE_CYCLES:
                     sent_pair_sim_cycles = {'cycles': min_cycle_basis, 'sim': sim_res}
                     sentence_pair["%s-%s" % (doc1_s_id, doc2_s_id)] = sent_pair_sim_cycles
@@ -476,6 +508,11 @@ def doc_pair_sim(doc1, doc2):
                 # else:
                 #     out_json[0] += sim_res
                 #     out_json[1] = out_json[1].append(word_list)
+    # we may want to reward doc pairs with more cycles
+    count_cycles_and_record(doc1[0], doc2[0], cycle_count)
+    norm_cycle_count = (cycle_count / 150.0) * 5
+    #doc_sim = doc_sim * math.exp(norm_cycle_count)
+    #doc_sim += cycle_count
     if SAVE_CYCLES:
         out_json = {'sim': doc_sim, 'sentence_pair': sentence_pair, 'word_list': set(doc_word_list)}
     else:

@@ -68,18 +68,6 @@ public class CoreNLPWrap
         m_props.setProperty("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
         if(!online)
         {
-            /*
-            m_props.setProperty("customAnnotatorClass.stopword", "usersimproj.StopwordAnnotator");
-            try
-            {
-                m_props.setProperty("StopwordAnnotator.STOPWORDS_LIST", loadStopwordList(m_swfilepath));
-            }
-            catch(Exception e)
-            {
-                e.toString();
-                e.printStackTrace();
-            }
-            */
             m_online = false;
             m_pipeline = new StanfordCoreNLP(m_props);
             coredoc = new CoreDocument(in_txt);

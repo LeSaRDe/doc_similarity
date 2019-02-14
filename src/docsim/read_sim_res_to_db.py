@@ -16,6 +16,7 @@ def update_sim(doc_key,  col, sim, count, doc_key1=None):
 
 def main(project_name):
     dataset_name, col_name = project_name[:project_name.find('_')], project_name[project_name.find('_')+1:]
+    print dataset_name, col_name
 
     global conn, cur
     conn = sqlite3.connect("/home/fcmeng/workspace/data/%s.db" % dataset_name)
@@ -76,4 +77,4 @@ if __name__ == '__main__':
     # ALTER TALBE docs_sim ADD <column_name> real;
 
     # Give a folder name, the folder name must match the column name
-    main('lee_nasari_35_rmsw_w3-3')
+    main('lee_nasari_40_rmswexpws_w3-2')

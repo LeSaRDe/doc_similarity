@@ -54,8 +54,8 @@ class ADWWrap
                     offset_2.substring(0, 8) + "-" + offset_2.substring(8),
                     DisambiguationMethod.ALIGNMENT_BASED,
                     m_measure,
-                    LexicalItemType.SENSE_OFFSETS,
-                    LexicalItemType.SENSE_OFFSETS);
+                    ItemType.SENSE_OFFSETS,
+                    ItemType.SENSE_OFFSETS);
                 if(cur_score > ret)
                 {
                     f_os_1 = new String(offset_1);
