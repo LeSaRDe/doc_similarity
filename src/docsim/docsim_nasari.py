@@ -26,21 +26,30 @@ import json
 #sent = 'Align, Disambiguate, and Walk (ADW) is a WordNet-based approach for measuring semantic similarity of arbitrary pairs of lexical items, from word senses to full texts.'
 
 NODE_ID_COUNTER = 0
-WORD_SIM_THRESHOLD_ADW = 0.4
-WORD_SIM_THRESHOLD_NASARI = 0.4
+WORD_SIM_THRESHOLD_ADW = 0.8
+WORD_SIM_THRESHOLD_NASARI = 0.7
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
 # the other option is 'adw'
-#WORD_SIM_MODE = 'nasari'
+WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
-WORD_SIM_MODE = 'adw_tag'
+#WORD_SIM_MODE = 'adw_tag'
 DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_40_rmswexpws_w3-2/'
+# rmsw = remove stopwords
+# cbw = use cb_weight to set inter_edges' weights to very high when computing cycle basis
+# expws = exponentiate word similarities
+# cycdbg = output cycle dbg info to intermediate files
+# cycrbf = use rbf to compute significance of cycles
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_70_rmswcbwexpwscycrbf_w3-2/'
+#CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 2.0
-MAX_PROC = 12
+#CYC_SIG_PARAM 3 and 4 are used by exp(- (w1-param3)^2 / param4)
+CYC_SIG_PARAM_3 = 1.0
+CYC_SIG_PARAM_4 = 5.0
+MAX_PROC = 6
 PROC_BATCH_SIZE = 12
 
 SAVE_CYCLES = False
@@ -51,7 +60,7 @@ PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 # the format of the input tree string needs follow the CoreNLP Tree def.
 # this format is compatible with NLTK Tree.
 # the graph is introduced from NetworkX.
-# leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]#[ner]#[pos]:[uni_idx]
+# leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]#[ner]#[pos]#[lemma]:[uni_idx]
 def treestr_to_graph(treestr, id):
     ret_graph = nx.Graph()
     tree = Tree.fromstring(treestr)
@@ -80,7 +89,7 @@ def treestr_to_graph(treestr, id):
                 ret_graph.add_node(end, type='leaf', tags = offset_tags, idx = token_index)
             else:
                 ret_graph.add_node(end, type='node')
-            ret_graph.add_edge(start, end.strip(), weight = 1, type = 'intra')
+            ret_graph.add_edge(start, end.strip(), weight = 1, type = 'intra', cb_weight = 1)
     #print "tree_str_to_graph:"
     #print ret_graph.nodes
     return ret_graph
@@ -228,28 +237,44 @@ def find_inter_edges(tree_1, tree_2):
                     if word_1 == word_2:
                         sim = 1
                 if sim > WORD_SIM_THRESHOLD_ADW:
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter'}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
             elif WORD_SIM_MODE == 'adw_tag':
                 # we use Java ADW word similarity server in this case
                 # it can compare any two words with one of the following tags
                 # the two words need not be of the same pos tag
                 pos_set = ['n', 'v', 'r', 'a']
-                tags_1 = leaf_1.split(':')[2]
+                tags_1 = leaf_1[0].split(':')[2]
                 pos_1 = tags_1.split('#')[4].strip()
-                tags_2 = leaf_2.split(':')[2]
-                pos_2 = tags_2.split('#')[4].strip()
-                if word_1 == word_2:
-                    sim = 1
+                lemma_1 = tags_1.split('#')[5].strip()
+                if pos_1[0].lower() in pos_set:
+                    pos_1 = pos_1[0].lower()
+                    word_1 = lemma_1
                 else:
+                    pos_1 = None
+                tags_2 = leaf_2[0].split(':')[2]
+                pos_2 = tags_2.split('#')[4].strip()
+                lemma_2 = tags_2.split('#')[5].strip()
+                if pos_2[0].lower() in pos_set:
+                    pos_2 = pos_2[0].lower()
+                    word_2 = lemma_2
+                else:
+                    pos_2 = None
+                if word_1 == word_2:
+                    sim = 1.0
+                elif pos_1 is not None and pos_2 is not None:
                     sim = send_wordsim_request('tt', word_1+':'+pos_1, word_2+':'+pos_2)
+                else:
+                    sim = 0.0
+                if sim > WORD_SIM_THRESHOLD_ADW:
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
             elif WORD_SIM_MODE == 'nasari':
                 if word_1 == word_2:
-                    sim = 1
+                    sim = 1.0
                 else:
                     sim = send_wordsim_request('ww', word_1, word_2)
                 #print "[DBG]: nasari sim = " + str(sim)
                 if sim > WORD_SIM_THRESHOLD_NASARI:
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter'}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
     return edges
 
 
@@ -315,14 +340,24 @@ def write_intermedia_to_file(doc1_id, doc2_id, json_data):
     with open(fname, 'w+') as outfile:
         try:
             json.dump(json_data, outfile, indent=4)
-        except:
+        except Exception as e:
+            print "[DBG]: json exception: "
+            print e
             outfile.write(json_data)
     outfile.close()
 
-
+# when finding the min weight cycle basis, we need to be clear that 
+# a graph may have multiple min weight cycle bases.
+# here we emphasize more on the edges of the two parse trees instead of 
+# the word similarities. so we use 'cb_weight' to compute the min weight
+# cycle basis. the edges between words are of really high weights so that
+# they are not preferred to be selected. in in this way, we expect that 
+# the resulting cycle basis can reflect the best choice of phrase-edges in
+# each parse tree.
 def find_min_cycle_basis(graph, tree_1, tree_2):
     #print "[DBG]: ----------------------------------------"
-    pre_cycle_basis = nx.minimum_cycle_basis(graph)
+    #pre_cycle_basis = nx.minimum_cycle_basis(graph)
+    pre_cycle_basis = nx.minimum_cycle_basis(graph, weight='cb_weight')
     #print "[DBG]: pre_cycle_basis init = "
     #print pre_cycle_basis
     min_cycle_basis = []
@@ -354,7 +389,8 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
             #print H.nodes()
             #print "[DBG]: H edges = "
             #print H.edges()
-            sub_cycle_basis = nx.minimum_cycle_basis(H)
+            #sub_cycle_basis = nx.minimum_cycle_basis(H)
+            sub_cycle_basis = nx.minimum_cycle_basis(H, weight='cb_weight')
             #print "[DBG]: sub_cycle_basis = "
             #print sub_cycle_basis
             for cc in sub_cycle_basis:
@@ -385,25 +421,38 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
     #print "[DBG]: ----------------------------------------"
     return min_cycle_basis
 
-
 def cal_cycle_weight(cycle, inter_edges):
     s1_nodes, s2_nodes = get_tags_n_leaves(cycle)
     if len(s1_nodes["leaves"]) > 2 or len(s2_nodes["leaves"]) > 2:
         print "[ERR]: Sentence has more than 2 words in one cycle!"
     w1 = len(s1_nodes["tags"]) + 1
     w2 = len(s2_nodes["tags"]) + 1
-    arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
+    # only for arc stat
+    #arc_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #arc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #arc_sock.sendto(str(w1) + '#' + str(w2), ('localhost', 9103))
+    #arc_sock.close()
+
+    #arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
+    #arch_weight_1  = math.exp(- (math.pow(w1 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
+    #arch_weight_2  = math.exp(- (math.pow(w2 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
+    arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
 
     inter_weight = 1
     for link in inter_edges:
         if link[0] in s1_nodes["leaves"]:
             if link[1] in s2_nodes["leaves"]:
+                #inter_weight += math.exp(link[2]["weight"] * 3)
                 if link[2]["weight"] < inter_weight:
                     inter_weight = link[2]["weight"]
 
     #ret = arch_weight * inter_weight
     ret = arch_weight * math.exp(inter_weight*2)
-    #print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(math.exp(inter_weight*4))
+    print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(math.exp(inter_weight*2))
+    #print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(inter_weight)
+    if arch_weight == 1.0:
+        print "[DBG]: w1 = %d" % w1
+        print "[DBG]: w2 = %d" % w2
     return ret, s1_nodes["leaves"]+s2_nodes["leaves"]
 
 
@@ -514,7 +563,7 @@ def doc_pair_sim(doc1, doc2):
     #doc_sim = doc_sim * math.exp(norm_cycle_count)
     #doc_sim += cycle_count
     if SAVE_CYCLES:
-        out_json = {'sim': doc_sim, 'sentence_pair': sentence_pair, 'word_list': set(doc_word_list)}
+        out_json = {'sim': doc_sim, 'sentence_pair': sentence_pair, 'word_list': list(set(doc_word_list))}
     else:
         out_json = [doc_sim, ','.join(set(doc_word_list))]
     write_intermedia_to_file(doc1[0],doc2[0], out_json)
@@ -640,6 +689,11 @@ def main():
     #     f_out.close()
     db_conn.close()
     print "ALL DONE!"
+    # only for arc stat
+    #arc_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    #arc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    #arc_sock.sendto('done', ('localhost', 9103))
+    #arc_sock.close()
 #=========================================================
     #err_sent_tree = Tree.fromstring(err_sent_tree_str)
     #print err_sent_tree

@@ -15,7 +15,7 @@ class WordSimServer
      * Constants
      */
     // use this constant if we go with FixedThreadPool
-    public final int MAX_THREADS = 12;
+    public final int MAX_THREADS = 6;
     public final int SERV_PORT = 8607;
     private final int MAX_TASK = 50;
     

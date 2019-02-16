@@ -29,10 +29,11 @@ class ADWWrap
         {
             return false;
         }
-        String pattern = "[a-zA-Z]*#[a-zA-Z]*";
-        Pattern p = Pattern.compile(pattern);
-        Matcher m = p.matcher(word_pos);
-        boolean ret = m.matches();
+        String pattern = "[a-zA-Z.-']*#[a-zA-Z.-']*";
+        //Pattern p = Pattern.compile(pattern);
+        //Matcher m = p.matcher(word_pos);
+        //boolean ret = m.matches();
+        boolean ret = word_pos.matches(pattern);
         //boolean ret = Pattern.matches(pattern, word_pos);
         if(!ret)
             System.out.println("[DBG]: Input word: " + word_pos + " is invalid!");
@@ -42,10 +43,12 @@ class ADWWrap
     public Double getWordPairSimilarity(String word_pos_1, String word_pos_2)
     {
         Double ret = 0D;
-        if(check_word_pos(word_pos_1) && check_word_pos(word_pos_2))
+        //if(check_word_pos(word_pos_1) && check_word_pos(word_pos_2))
         {
             ret = m_adw.getPairSimilarity(word_pos_1, word_pos_2, 
                     DisambiguationMethod.ALIGNMENT_BASED, m_measure, ItemType.SURFACE_TAGGED, ItemType.SURFACE_TAGGED);
+            //ret = m_adw.getPairSimilarity(word_pos_1, word_pos_2, 
+            //        DisambiguationMethod.NONE, m_measure, ItemType.SURFACE_TAGGED, ItemType.SURFACE_TAGGED);
             //System.out.println("[DBG]: sim = " + ret.toString());
         }
         //System.out.println("[DBG]: get sim words = " + word_pos_1 + " " + word_pos_2);

@@ -108,7 +108,7 @@ public class DeSentence
 
     // this function will attach the sense offsets and pos tags to each leaf.
     // N.B. every leaf node will be formatted as follows: e.g. L:word#12345678n+23456789n#6
-    // L:[word]#[synset_1]+...+[synset_n]#[index]#[ner]#[pos]
+    // L:[word]#[synset_1]+...+[synset_n]#[index]#[ner]#[pos]#[lemma]
     // if a leaf doesn't have any sense offset, then this leaf is just a token.
     public Tree getTaggedTree()
     {
@@ -130,13 +130,14 @@ public class DeSentence
             int t_idx = token.index();
             String ner = token.ner();
             String pos = token.pos();
+            String lemma = token.lemma();
             if(synset != null && synset.size() != 0)
             {
-                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + String.join("+", synset) + "#" + t_idx + "#" + ner + "#" + pos));
+                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + String.join("+", synset) + "#" + t_idx + "#" + ner + "#" + pos + "#" + lemma));
             }
             else
             {
-                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + "" + "#" + t_idx + "#" + ner + "#" + pos));
+                leaf.setLabel(slf.newLabel("L:" + leaf.value() + "#" + "" + "#" + t_idx + "#" + ner + "#" + pos + "#" + lemma));
             }
         }
         //System.out.println("[DBG]: getTaggedTree: " + m_tagged_tree.toString());
@@ -232,7 +233,7 @@ public class DeSentence
     //   some other scenarios.
     public boolean isValidToken(String token)
     {
-        String regex = "[a-zA-Z-.']*#?(\\d{8}[a-z]{1})?(\\+\\d{8}[a-z]{1})*#[0-9]*#[a-zA-Z]*#[a-zA-Z]*";
+        String regex = "[a-zA-Z-.']*#?(\\d{8}[a-z]{1})?(\\+\\d{8}[a-z]{1})*#[0-9]*#[a-zA-Z]*#[a-zA-Z]*#[a-zA-Z-.']*";
         boolean ret = token.matches(regex);
         //if(!ret)
         //{
