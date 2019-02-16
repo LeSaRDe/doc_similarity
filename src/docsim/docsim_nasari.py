@@ -27,7 +27,8 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.8
-WORD_SIM_THRESHOLD_NASARI = 0.7
+WORD_SIM_THRESHOLD_NASARI = 0.5
+WORD_SIM_THRESHOLD_NASARI_N = 0.3
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -42,7 +43,8 @@ DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
 # expws = exponentiate word similarities
 # cycdbg = output cycle dbg info to intermediate files
 # cycrbf = use rbf to compute significance of cycles
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_70_rmswcbwexpwscycrbf_w3-2/'
+# n[40] = use noun threshold 0.4 individually
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_50_rmswcbwexpwsn30_w3-2/'
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 2.0
@@ -272,9 +274,18 @@ def find_inter_edges(tree_1, tree_2):
                     sim = 1.0
                 else:
                     sim = send_wordsim_request('ww', word_1, word_2)
+                tags_1 = leaf_1[0].split(':')[2]
+                pos_1 = tags_1.split('#')[4].strip()
+                tags_2 = leaf_2[0].split(':')[2]
+                pos_2 = tags_2.split('#')[4].strip()
                 #print "[DBG]: nasari sim = " + str(sim)
-                if sim > WORD_SIM_THRESHOLD_NASARI:
+                if pos_1 == 'n' and pos_2 == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
+                    print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
                     edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                elif sim >= WORD_SIM_THRESHOLD_NASARI:
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                else:
+                    pass
     return edges
 
 
@@ -356,8 +367,8 @@ def write_intermedia_to_file(doc1_id, doc2_id, json_data):
 # each parse tree.
 def find_min_cycle_basis(graph, tree_1, tree_2):
     #print "[DBG]: ----------------------------------------"
-    #pre_cycle_basis = nx.minimum_cycle_basis(graph)
-    pre_cycle_basis = nx.minimum_cycle_basis(graph, weight='cb_weight')
+    pre_cycle_basis = nx.minimum_cycle_basis(graph)
+    #pre_cycle_basis = nx.minimum_cycle_basis(graph, weight='cb_weight')
     #print "[DBG]: pre_cycle_basis init = "
     #print pre_cycle_basis
     min_cycle_basis = []
@@ -389,8 +400,8 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
             #print H.nodes()
             #print "[DBG]: H edges = "
             #print H.edges()
-            #sub_cycle_basis = nx.minimum_cycle_basis(H)
-            sub_cycle_basis = nx.minimum_cycle_basis(H, weight='cb_weight')
+            sub_cycle_basis = nx.minimum_cycle_basis(H)
+            #sub_cycle_basis = nx.minimum_cycle_basis(H, weight='cb_weight')
             #print "[DBG]: sub_cycle_basis = "
             #print sub_cycle_basis
             for cc in sub_cycle_basis:
@@ -433,10 +444,10 @@ def cal_cycle_weight(cycle, inter_edges):
     #arc_sock.sendto(str(w1) + '#' + str(w2), ('localhost', 9103))
     #arc_sock.close()
 
-    #arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
+    arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
     #arch_weight_1  = math.exp(- (math.pow(w1 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
     #arch_weight_2  = math.exp(- (math.pow(w2 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
-    arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
+    #arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
 
     inter_weight = 1
     for link in inter_edges:
