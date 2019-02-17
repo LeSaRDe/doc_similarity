@@ -27,8 +27,8 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.8
-WORD_SIM_THRESHOLD_NASARI = 0.5
-WORD_SIM_THRESHOLD_NASARI_N = 0.3
+WORD_SIM_THRESHOLD_NASARI = 0.4
+WORD_SIM_THRESHOLD_NASARI_N = 0.4
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -44,7 +44,7 @@ DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
 # cycdbg = output cycle dbg info to intermediate files
 # cycrbf = use rbf to compute significance of cycles
 # n[40] = use noun threshold 0.4 individually
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_50_rmswcbwexpwsn30_w3-2/'
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_40_rmswcbwexpwsn40_w3-2/'
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 2.0
@@ -279,9 +279,10 @@ def find_inter_edges(tree_1, tree_2):
                 tags_2 = leaf_2[0].split(':')[2]
                 pos_2 = tags_2.split('#')[4].strip()
                 #print "[DBG]: nasari sim = " + str(sim)
-                if pos_1 == 'n' and pos_2 == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
+                if pos_1[0].lower() == 'n' and pos_2[0].lower == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
                     print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                    #edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': math.exp(sim), 'type': 'inter', 'cb_weight' :  sim*100}))
                 elif sim >= WORD_SIM_THRESHOLD_NASARI:
                     edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
                 else:
@@ -449,12 +450,13 @@ def cal_cycle_weight(cycle, inter_edges):
     #arch_weight_2  = math.exp(- (math.pow(w2 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
     #arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
 
-    inter_weight = 1
+    #inter_weight = 1
+    inter_weight = 0
     for link in inter_edges:
         if link[0] in s1_nodes["leaves"]:
             if link[1] in s2_nodes["leaves"]:
-                #inter_weight += math.exp(link[2]["weight"] * 3)
                 if link[2]["weight"] < inter_weight:
+                #if link[2]["weight"] > inter_weight:
                     inter_weight = link[2]["weight"]
 
     #ret = arch_weight * inter_weight

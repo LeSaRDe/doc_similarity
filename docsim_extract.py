@@ -2,7 +2,7 @@ import sqlite3
 import csv
 from operator import itemgetter
 
-run_name = 'nasari_40_rmswcbwexpwscycrbf_w3-2'
+run_name = 'nasari_50_rmswcbwexpwsn30_w3-2'
 
 def dump_dsctp_results():
     try:

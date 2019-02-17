@@ -195,4 +195,4 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('lee_nasari_50_rmswcbwexpwsn30_w3-2')
+main('lee_nasari_40_rmswcbwexpwsn40_w3-2')
