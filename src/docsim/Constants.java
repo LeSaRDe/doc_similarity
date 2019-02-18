@@ -12,8 +12,10 @@ class Constants
     static final int CORENLP_SERV_PORT = 9000;
     static final int CORENLP_CLIENT_THREAD = 12;
     //static final String DB_PATH = "jdbc:sqlite:/hpchome/fcmeng/doc_sim/docsim.db";
-    static final String ANNTXT_DB_CONNSTR = "jdbc:sqlite:/home/fcmeng/workspace/data/lee_bg.db";
-    static final String STOPWORDS_PATH = "/home/fcmeng/workspace/doc_similarity/res/stopwords.txt";
+	//static final String ANNTXT_DB_CONNSTR = String.format("jdbc:sqlite:/home/%s/workspace/data/lee_bg.db", System.getenv("USER"));
+    static final String ANNTXT_DB_CONNSTR = "jdbc:sqlite:/home/ubuntu/workspace/data/lee_bg.db";
+    //static final String STOPWORDS_PATH = String.format("/home/%s/workspace/doc_similarity/res/stopwords.txt", System.getenv("USER"));
+    static final String STOPWORDS_PATH = "/home/ubuntu/workspace/doc_similarity/res/stopwords.txt";
     //static final String DB_TB_NAME = "tb_docsim";
     static final String ANNTXT_DB_TB_DOCS = "docs";
     //static final String WS_SERVER_HOSTNAME = "pegasus1";

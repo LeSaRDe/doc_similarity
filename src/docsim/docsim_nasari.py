@@ -27,8 +27,8 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.75
-WORD_SIM_THRESHOLD_NASARI = 0.8
-WORD_SIM_THRESHOLD_NASARI_N = 0.8
+WORD_SIM_THRESHOLD_NASARI = 0.7
+WORD_SIM_THRESHOLD_NASARI_N = 0.7
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -37,7 +37,7 @@ SEND_ADDR_NASARI = 'localhost'
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
 #WORD_SIM_MODE = 'adw_tag'
-DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
+DB_CONN_STR = '/home/{0}/workspace/data/lee.db'.format(os.environ['USER'])
 # rmsw = remove stopwords
 # cbw = use cb_weight to set inter_edges' weights to very high when computing cycle basis
 # expws = exponentiate word similarities
@@ -46,12 +46,12 @@ DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
 # n[40] = use noun threshold 0.4 individually
 # cycdist = use cycle distribution penalty
 # expn = exponentiate noun similarities
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_80_rmswcbwexpwscycdist_w3-3/'
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/lee_nasari_70_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
 # for cycle distribution penalty
-CYC_DIST = True
+CYC_DIST = False
 # exponentiate noun similarities
 EXP_NOUN = False
 # use rbf like method to compute cycle significance
@@ -60,8 +60,8 @@ CYC_RBF = False
 #CYC_SIG_PARAM 3 and 4 are used by exp(- (w1-param3)^2 / param4)
 CYC_SIG_PARAM_3 = 1.0
 CYC_SIG_PARAM_4 = 20.0
-MAX_PROC = 6
-PROC_BATCH_SIZE = 12
+MAX_PROC = 36
+PROC_BATCH_SIZE = 36
 
 SAVE_CYCLES = False
 
@@ -590,7 +590,7 @@ def doc_pair_sim(doc1, doc2):
                 #     out_json[0] += sim_res
                 #     out_json[1] = out_json[1].append(word_list)
     # we may want to reward doc pairs with more cycles
-    count_cycles_and_record(doc1[0], doc2[0], cycle_count)
+    #count_cycles_and_record(doc1[0], doc2[0], cycle_count)
     norm_cycle_count = (cycle_count / 150.0) * 5
     #doc_sim = doc_sim * math.exp(norm_cycle_count)
     #doc_sim += cycle_count

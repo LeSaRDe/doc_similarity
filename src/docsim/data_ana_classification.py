@@ -63,7 +63,7 @@ def cal_precision_recall_f1_kappa(res_list):
 def main(project_name):
     dataset_name, col_name = project_name[:project_name.find('_')], project_name[project_name.find('_') + 1:]
     global conn, cur
-    conn = sqlite3.connect("/home/fcmeng/workspace/data/%s.db" % dataset_name)
+    conn = sqlite3.connect("/home/%s/workspace/data/%s.db" % (os.environ['USER'], dataset_name))
     cur = conn.cursor()
 
     # target_path = 'C:/Users/Yan Zheng/Documents/fanchao/textprocess/python/our_model/'
@@ -79,13 +79,13 @@ def main(project_name):
     # thrds = ["T100", "T95", "T90", "T85", "T80", "T75", "T70", "T65", "T60", "T55", "T50",
     #          "T45", "T40", "T35", "T30", "T25", "T20", "T15", "T10", "T5", "T0"]
     global res_output
-    output_file_path = '/home/fcmeng/workspace/data/analysis/'
+    output_file_path = '/home/{0}/workspace/data/analysis/'.format(os.environ['USER'])
     res_output = open(output_file_path + project_name+ "_res_99.txt", 'a')
     TOTAL_hs25 = 1095
     TOTAL_hs35 = 46
     TOTAL_hs25_35 = 84
 
-    human_rec_files = '/home/fcmeng/workspace/doc_similarity/res/'
+    human_rec_files = '/home/{0}/workspace/doc_similarity/res/'.format(os.environ['USER'])
 
     # with open(human_rec_files+"%s_all_keys.txt" % dataset_name, "r") as f:
     #     content = f.readlines()
@@ -202,4 +202,4 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('lee_nasari_80_rmswcbwexpwscycdist_w3-3')
+main('lee_nasari_70_rmswcbwexpws_w3-3')

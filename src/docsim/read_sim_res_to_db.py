@@ -29,7 +29,7 @@ def main(project_name):
             if num_rows != 0:
                 print "Total Doc pair keys don't match the num of docs, something is wrong. Need to empty the keys and re-insert."
             else:
-                key_file = '/home/fcmeng/workspace/doc_similarity/res/lee_all_keys.txt'
+                key_file = '/home/{0}/workspace/doc_similarity/res/lee_all_keys.txt'.format(os.enrion['USER'])
                 with open(key_file, 'r') as infile:
                     keys = infile.readlines()
                     for i, line in enumerate(keys):
@@ -47,7 +47,7 @@ def main(project_name):
         print "Doc pair keys are already inserted."
 
 
-    files_path = '/home/fcmeng/workspace/data/%s/' % project_name
+    files_path = '/home/%s/workspace/data/%s/' % (os.environ['USER'], project_name)
     cnt = 0
     for file in os.listdir(files_path):
         if file.endswith(".json"):
@@ -77,4 +77,4 @@ if __name__ == '__main__':
     # ALTER TALBE docs_sim ADD <column_name> real;
 
     # Give a folder name, the folder name must match the column name
-    main('lee_nasari_80_rmswcbwexpwscycdist_w3-3')
+    main('lee_nasari_70_rmswcbwexpws_w3-3')
