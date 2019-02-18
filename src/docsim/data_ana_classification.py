@@ -84,7 +84,7 @@ def main(project_name):
     TOTAL_hs25 = 1095
     TOTAL_hs35 = 46
 
-    human_rec_files = '/home/fcmeng/workspace/doc_clustering_proj/doc_similarity/res/'
+    human_rec_files = '/home/fcmeng/workspace/doc_similarity/res/'
 
     # with open(human_rec_files+"%s_all_keys.txt" % dataset_name, "r") as f:
     #     content = f.readlines()
@@ -195,4 +195,4 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('lee_nasari_40_rmswcbwexpwsn40_w3-2')
+main('lee_nasari_70_rmswcbwexpwscycdist_w3-3')

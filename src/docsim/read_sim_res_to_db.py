@@ -77,4 +77,4 @@ if __name__ == '__main__':
     # ALTER TALBE docs_sim ADD <column_name> real;
 
     # Give a folder name, the folder name must match the column name
-    main('lee_nasari_40_rmswcbwexpwsn40_w3-2')
+    main('lee_nasari_70_rmswcbwexpwscycdist_w3-3')

@@ -26,9 +26,9 @@ import json
 #sent = 'Align, Disambiguate, and Walk (ADW) is a WordNet-based approach for measuring semantic similarity of arbitrary pairs of lexical items, from word senses to full texts.'
 
 NODE_ID_COUNTER = 0
-WORD_SIM_THRESHOLD_ADW = 0.8
-WORD_SIM_THRESHOLD_NASARI = 0.4
-WORD_SIM_THRESHOLD_NASARI_N = 0.4
+WORD_SIM_THRESHOLD_ADW = 0.75
+WORD_SIM_THRESHOLD_NASARI = 0.7
+WORD_SIM_THRESHOLD_NASARI_N = 0.7
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -44,13 +44,22 @@ DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
 # cycdbg = output cycle dbg info to intermediate files
 # cycrbf = use rbf to compute significance of cycles
 # n[40] = use noun threshold 0.4 individually
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_40_rmswcbwexpwsn40_w3-2/'
+# cycdist = use cycle distribution penalty
+# expn = exponentiate noun similarities
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_70_rmswcbwexpwscycdist_w3-3/'
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
-CYC_SIG_PARAM_2 = 2.0
+CYC_SIG_PARAM_2 = 3.0
+# for cycle distribution penalty
+CYC_DIST = True
+# exponentiate noun similarities
+EXP_NOUN = False
+# use rbf like method to compute cycle significance
+# CYC_SIG_PARAM_3 and 4 are used in this case
+CYC_RBF = False
 #CYC_SIG_PARAM 3 and 4 are used by exp(- (w1-param3)^2 / param4)
 CYC_SIG_PARAM_3 = 1.0
-CYC_SIG_PARAM_4 = 5.0
+CYC_SIG_PARAM_4 = 20.0
 MAX_PROC = 6
 PROC_BATCH_SIZE = 12
 
@@ -239,7 +248,7 @@ def find_inter_edges(tree_1, tree_2):
                     if word_1 == word_2:
                         sim = 1
                 if sim > WORD_SIM_THRESHOLD_ADW:
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  100}))
             elif WORD_SIM_MODE == 'adw_tag':
                 # we use Java ADW word similarity server in this case
                 # it can compare any two words with one of the following tags
@@ -268,7 +277,7 @@ def find_inter_edges(tree_1, tree_2):
                 else:
                     sim = 0.0
                 if sim > WORD_SIM_THRESHOLD_ADW:
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  100}))
             elif WORD_SIM_MODE == 'nasari':
                 if word_1 == word_2:
                     sim = 1.0
@@ -278,13 +287,12 @@ def find_inter_edges(tree_1, tree_2):
                 pos_1 = tags_1.split('#')[4].strip()
                 tags_2 = leaf_2[0].split(':')[2]
                 pos_2 = tags_2.split('#')[4].strip()
-                #print "[DBG]: nasari sim = " + str(sim)
-                if pos_1[0].lower() == 'n' and pos_2[0].lower == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
-                    print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
-                    #edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                if EXP_NOUN and pos_1[0].lower() == 'n' and pos_2[0].lower() == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
+                    #print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
                     edges.append((leaf_1[0], leaf_2[0], {'weight': math.exp(sim), 'type': 'inter', 'cb_weight' :  sim*100}))
                 elif sim >= WORD_SIM_THRESHOLD_NASARI:
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  sim*100}))
+                    #print "[DBG]: nasari sim = " + str(sim)
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  100}))
                 else:
                     pass
     return edges
@@ -368,8 +376,8 @@ def write_intermedia_to_file(doc1_id, doc2_id, json_data):
 # each parse tree.
 def find_min_cycle_basis(graph, tree_1, tree_2):
     #print "[DBG]: ----------------------------------------"
-    pre_cycle_basis = nx.minimum_cycle_basis(graph)
-    #pre_cycle_basis = nx.minimum_cycle_basis(graph, weight='cb_weight')
+    #pre_cycle_basis = nx.minimum_cycle_basis(graph)
+    pre_cycle_basis = nx.minimum_cycle_basis(graph, weight='cb_weight')
     #print "[DBG]: pre_cycle_basis init = "
     #print pre_cycle_basis
     min_cycle_basis = []
@@ -401,8 +409,8 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
             #print H.nodes()
             #print "[DBG]: H edges = "
             #print H.edges()
-            sub_cycle_basis = nx.minimum_cycle_basis(H)
-            #sub_cycle_basis = nx.minimum_cycle_basis(H, weight='cb_weight')
+            #sub_cycle_basis = nx.minimum_cycle_basis(H)
+            sub_cycle_basis = nx.minimum_cycle_basis(H, weight='cb_weight')
             #print "[DBG]: sub_cycle_basis = "
             #print sub_cycle_basis
             for cc in sub_cycle_basis:
@@ -445,13 +453,15 @@ def cal_cycle_weight(cycle, inter_edges):
     #arc_sock.sendto(str(w1) + '#' + str(w2), ('localhost', 9103))
     #arc_sock.close()
 
-    arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
+    if CYC_RBF:
+        arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
+    else:
+        arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
     #arch_weight_1  = math.exp(- (math.pow(w1 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
     #arch_weight_2  = math.exp(- (math.pow(w2 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
-    #arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
 
-    #inter_weight = 1
-    inter_weight = 0
+    inter_weight = 1
+    #inter_weight = 0
     for link in inter_edges:
         if link[0] in s1_nodes["leaves"]:
             if link[1] in s2_nodes["leaves"]:
@@ -461,7 +471,7 @@ def cal_cycle_weight(cycle, inter_edges):
 
     #ret = arch_weight * inter_weight
     ret = arch_weight * math.exp(inter_weight*2)
-    print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(math.exp(inter_weight*2))
+    #print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(math.exp(inter_weight*2))
     #print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(inter_weight)
     if arch_weight == 1.0:
         print "[DBG]: w1 = %d" % w1
@@ -551,11 +561,18 @@ def doc_pair_sim(doc1, doc2):
     sentence_pair = dict()
     doc_word_list = []
     cycle_count = 0
+    l_cyc_count_per_sent_pair = []
     for doc1_s_id, sent_treestr_1 in enumerate(l_sent_treestr_1):
         for doc2_s_id, sent_treestr_2 in enumerate(l_sent_treestr_2):
             #TODO:
             sim_res, min_cycle_basis, word_list = sent_pair_sim(sent_treestr_1, sent_treestr_2)
             cycle_count += len(min_cycle_basis)
+            print "[DBG]: len of min_cycle_basis is %s" % len(min_cycle_basis)
+            if len(min_cycle_basis) > 0:
+                l_cyc_count_per_sent_pair.append(1)
+            else:
+                l_cyc_count_per_sent_pair.append(0)
+
             if sim_res != 0:
                 doc_sim += sim_res
                 # cycle count
@@ -575,6 +592,19 @@ def doc_pair_sim(doc1, doc2):
     norm_cycle_count = (cycle_count / 150.0) * 5
     #doc_sim = doc_sim * math.exp(norm_cycle_count)
     #doc_sim += cycle_count
+    # calculate the doc sim weight w.r.t. the distribution of cycles
+    divgrad_cyc_count = []
+    for i in range(len(l_cyc_count_per_sent_pair)):
+        for j in range(i+1, len(l_cyc_count_per_sent_pair)):
+            divgrad_cyc_count.append(math.pow(l_cyc_count_per_sent_pair[i] - l_cyc_count_per_sent_pair[j], 2))
+    cyc_dist_weight = math.exp(- math.sqrt(sum(divgrad_cyc_count) / len(l_cyc_count_per_sent_pair)))
+    old_doc_sim = doc_sim
+    if CYC_DIST:
+        doc_sim = old_doc_sim * cyc_dist_weight
+        print "[DBG]: divgrad_cyc_count = "
+        print divgrad_cyc_count
+        print "[DBG]: cyc_dist_weight = %s, old_doc_sim = %s, new_doc_sim = %s" % (cyc_dist_weight, old_doc_sim, doc_sim)
+        print "===================="
     if SAVE_CYCLES:
         out_json = {'sim': doc_sim, 'sentence_pair': sentence_pair, 'word_list': list(set(doc_word_list))}
     else:
