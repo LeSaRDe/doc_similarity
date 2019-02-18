@@ -1,9 +1,9 @@
 import sqlite3
 
 # the original dataset file
-ORIG_DATA_FILE_PATH = "/home/fcmeng/workspace/data/lee.txt"
+ORIG_DATA_FILE_PATH = "/home/fcmeng/workspace/data/lee_background.cor"
 # the output db 
-DB_PATH = "/home/fcmeng/workspace/data/lee.db"
+DB_PATH = "/home/fcmeng/workspace/data/lee_bg.db"
 COMMIT_MAX = 5
 
 # 'docs' table:
@@ -19,8 +19,8 @@ def main():
     if not create_docs_table(db_conn):
         print "[ERR]: Failed at creating docs table!"
         return
-    update_all_rec_word_list_to_docs(db_conn)
-    #insert_recs_to_docs(db_conn, rec_file)
+    #update_all_rec_word_list_to_docs(db_conn)
+    insert_recs_to_docs(db_conn, rec_file)
     db_conn.close()
     print "ALL DONE!"
 
@@ -121,7 +121,7 @@ def update_all_rec_word_list_to_docs(db_conn):
 # Input: a text string
 # Output: a string composed by a set of words and separators
 def get_word_list_from_txt(txt):
-    return "test"
+    return None
 
 main()
 

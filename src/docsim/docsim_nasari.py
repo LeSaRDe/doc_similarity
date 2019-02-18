@@ -27,8 +27,8 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.75
-WORD_SIM_THRESHOLD_NASARI = 0.7
-WORD_SIM_THRESHOLD_NASARI_N = 0.7
+WORD_SIM_THRESHOLD_NASARI = 0.8
+WORD_SIM_THRESHOLD_NASARI_N = 0.8
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -46,7 +46,7 @@ DB_CONN_STR = '/home/fcmeng/workspace/data/lee.db'
 # n[40] = use noun threshold 0.4 individually
 # cycdist = use cycle distribution penalty
 # expn = exponentiate noun similarities
-OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_70_rmswcbwexpwscycdist_w3-3/'
+OUT_CYCLE_FILE_PATH = '/home/fcmeng/workspace/data/lee_nasari_80_rmswcbwexpwscycdist_w3-3/'
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -567,11 +567,13 @@ def doc_pair_sim(doc1, doc2):
             #TODO:
             sim_res, min_cycle_basis, word_list = sent_pair_sim(sent_treestr_1, sent_treestr_2)
             cycle_count += len(min_cycle_basis)
-            print "[DBG]: len of min_cycle_basis is %s" % len(min_cycle_basis)
+            #print "[DBG]: len of min_cycle_basis is %s" % len(min_cycle_basis)
             if len(min_cycle_basis) > 0:
                 l_cyc_count_per_sent_pair.append(1)
             else:
                 l_cyc_count_per_sent_pair.append(0)
+            #print "[DBG]: l_cyc_count_per_sent_pair = "
+            #print l_cyc_count_per_sent_pair
 
             if sim_res != 0:
                 doc_sim += sim_res
@@ -679,7 +681,7 @@ def validate_doc_trees(doc1_tree, doc2_tree):
 # this function compute the text similarity between two users given a text data within a specified period for each user.
 def text_sim(db_cur):
     db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
-    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '0' OR doc_id = '9'")
+    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '13' OR doc_id = '31'")
     rows = db_cur.fetchall()
     total_doc_pair_count = (len(rows)*(len(rows)-1))/2
     print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 

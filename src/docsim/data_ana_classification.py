@@ -83,6 +83,7 @@ def main(project_name):
     res_output = open(output_file_path + project_name+ "_res_99.txt", 'a')
     TOTAL_hs25 = 1095
     TOTAL_hs35 = 46
+    TOTAL_hs25_35 = 84
 
     human_rec_files = '/home/fcmeng/workspace/doc_similarity/res/'
 
@@ -95,6 +96,9 @@ def main(project_name):
     with open(human_rec_files+"hsgreat35.txt", "r") as f:
         content = f.readlines()
     hs35_key_pairs = [x.replace('(','').replace(')','').replace(',','#').strip() for x in content]
+    with open(human_rec_files+"hsgreat25less35.txt", "r") as f:
+        content = f.readlines()
+    hs25_35_key_pairs = [x.replace('(','').replace(')','').replace(',','#').strip() for x in content]
 
     # Step1: read in similarity scores
     # to_ana_all = dict.fromkeys(thrds, dict())
@@ -123,14 +127,17 @@ def main(project_name):
     # read in data
     to_ann_25 = map_result(hs25_key_pairs, to_ana)
     to_ann_35 = map_result(hs35_key_pairs, to_ana)
+    to_ann_25_35 = map_result(hs25_35_key_pairs, to_ana)
 
     # calculate mean confidence intervals
     mean25, mean25_conf_l, mean25_conf_h = mean_confidence_interval(to_ann_25)
     mean35, mean35_conf_l, mean35_conf_h = mean_confidence_interval(to_ann_35)
+    mean25_35, mean25_35_conf_l, mean25_35_conf_h = mean_confidence_interval(to_ann_25_35)
 
     # print mean confidence intervals
     prt_result(to_ann_25, mean25, mean25_conf_l, mean25_conf_h, '25')
     prt_result(to_ann_35, mean35, mean35_conf_l, mean35_conf_h, '35')
+    prt_result(to_ann_25_35, mean25_35, mean25_35_conf_l, mean25_35_conf_h, '25-35')
 
     true_pos = 0
     false_pos = 0  # count_error_25
@@ -195,4 +202,4 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('lee_nasari_70_rmswcbwexpwscycdist_w3-3')
+main('lee_nasari_80_rmswcbwexpwscycdist_w3-3')
