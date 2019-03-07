@@ -4,6 +4,7 @@ import scipy.stats
 import sqlite3
 # from plot_roc import plot_roc
 import json
+import os
 
 
 def map_result(ff, ta):
@@ -202,4 +203,4 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('lee_nasari_70_rmswcbwexpws_w3-3')
+main('lee_nasari_40_rmswcbwexpwsscyc_w3-3')

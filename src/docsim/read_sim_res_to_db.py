@@ -1,8 +1,8 @@
 import sqlite3
 import os
+import json
 
-INSERT_DOCS_PAIR_KEYS = True
-TOTAL_DOC = 50
+INSERT_DOCS_PAIR_KEYS = False
 
 
 def update_sim(doc_key,  col, sim, count, doc_key1=None):
@@ -14,12 +14,24 @@ def update_sim(doc_key,  col, sim, count, doc_key1=None):
         conn.commit()
 
 
-def main(project_name):
+def main(project_name, cycle):
+
     dataset_name, col_name = project_name[:project_name.find('_')], project_name[project_name.find('_')+1:]
-    print dataset_name, col_name
+    if dataset_name == 'lee':
+        TOTAL_DOC = 50
+    elif dataset_name == "20news18828":
+        TOTAL_DOC = 18828
+    elif dataset_name == "20news50":
+        TOTAL_DOC = 18828
+    elif dataset_name == "20news50short":
+        TOTAL_DOC = 1000
+    elif dataset_name == "20news50short10":
+        TOTAL_DOC = 500
+
+    print "[Dataset]: %s, [Col name]: %s, [Total docs]: %s" % (dataset_name, col_name, TOTAL_DOC)
 
     global conn, cur
-    conn = sqlite3.connect("/home/fcmeng/workspace/data/%s.db" % dataset_name)
+    conn = sqlite3.connect("/home/%s/workspace/data/%s.db" % (os.environ['USER'], dataset_name))
     cur = conn.cursor()
 
     if INSERT_DOCS_PAIR_KEYS:
@@ -29,12 +41,15 @@ def main(project_name):
             if num_rows != 0:
                 print "Total Doc pair keys don't match the num of docs, something is wrong. Need to empty the keys and re-insert."
             else:
-                key_file = '/home/{0}/workspace/doc_similarity/res/lee_all_keys.txt'.format(os.enrion['USER'])
+                key_file = '/home/%s/workspace/doc_similarity/res/%s_all_keys.txt' % (os.environ['USER'], dataset_name)
                 with open(key_file, 'r') as infile:
                     keys = infile.readlines()
                     for i, line in enumerate(keys):
-                        line = eval(line)
-                        key = "%s#%s" % (line[0], line[1])
+                        if "#" in line:
+                            key = line.strip()
+                        else:
+                            line = eval(line)
+                            key = "%s#%s" % (line[0], line[1])
                         # print key
                         cur.execute('INSERT INTO docs_sim (doc_id_pair) VALUES (?)', (key,))
                         if i+1 % 5000 == 0:
@@ -45,7 +60,6 @@ def main(project_name):
                     return
     else:
         print "Doc pair keys are already inserted."
-
 
     files_path = '/home/%s/workspace/data/%s/' % (os.environ['USER'], project_name)
     cnt = 0
@@ -59,7 +73,10 @@ def main(project_name):
                 else:
                     key = file.replace('_', '/').replace('.json', '')
                     key1 = None
-                sim = eval(infile.readlines()[1].replace(',',''))
+                if cycle == 'cycle':
+                    sim = json.load(infile)['sim']
+                else:
+                    sim = eval(infile.readlines()[1].replace(',',''))
                 print key, sim
                 infile.close()
                 cnt+=1
@@ -77,4 +94,5 @@ if __name__ == '__main__':
     # ALTER TALBE docs_sim ADD <column_name> real;
 
     # Give a folder name, the folder name must match the column name
-    main('lee_nasari_70_rmswcbwexpws_w3-3')
+    # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
+    main('20news50short10_nasari_40_rmswcbwexpws_w3-3', 'cycle')

@@ -14,6 +14,8 @@ import sqlite3
 import re
 import os
 import json
+import time
+import numpy
 
 #(ROOT (S (NP (NP (NNP Align#[00464321v]) (, ,) (NNP Disambiguate#[00957178v]) (, ,) ) (CC and) (NP (NP (VB Walk#[01904930v])) (PRN (-LRB- -LRB-) (NP (NN ADW)) (-RRB- -RRB-)))) (VP (VBZ is) (NP (NP (DT a) (JJ WordNet-based) (NN approach#[00941140n])) (PP (IN for) (S (VP (VBG measuring#[00647094v]) (NP (NP (JJ semantic#[02842042a]) (NN similarity#[04743605n])) (PP (IN of) (NP (NP (JJ arbitrary#[00718924a]) (NNS pairs#[13743605n])) (PP (IN of) (NP (JJ lexical#[02886629a]) (NNS items#[03588414n]))) (, ,) (PP (IN from) (NP (NN word#[06286395n]) (NNS senses#[03990834n])))))) (PP (TO to) (NP (JJ full#[01083157a]) (NNS texts#[06387980n, 06388579n])))))))) (. .)))
 
@@ -27,17 +29,25 @@ import json
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.75
-WORD_SIM_THRESHOLD_NASARI = 0.7
-WORD_SIM_THRESHOLD_NASARI_N = 0.7
+WORD_SIM_THRESHOLD_NASARI = 0.50
+WORD_SIM_THRESHOLD_NASARI_N = 0.50
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
+MULTI_WS_SERV = True
+MULTI_WS_SERV_MOD = 4
+RAND_SEED = 0
 # the other option is 'adw'
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
 #WORD_SIM_MODE = 'adw_tag'
 DB_CONN_STR = '/home/{0}/workspace/data/lee.db'.format(os.environ['USER'])
+# used for lee vs leebg
+BGDB_CONN_STR = '/home/{0}/workspace/data/leebg.db'.format(os.environ['USER'])
+# used for Li65 sentence comparison
+LI65_COL1_CONN_STR = '/home/{0}/workspace/data/Li65/col1.db'.format(os.environ['USER'])
+LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2.db'.format(os.environ['USER'])
 # rmsw = remove stopwords
 # cbw = use cb_weight to set inter_edges' weights to very high when computing cycle basis
 # expws = exponentiate word similarities
@@ -46,7 +56,9 @@ DB_CONN_STR = '/home/{0}/workspace/data/lee.db'.format(os.environ['USER'])
 # n[40] = use noun threshold 0.4 individually
 # cycdist = use cycle distribution penalty
 # expn = exponentiate noun similarities
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/lee_nasari_70_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
+# wo = weighted overlap simialrity algorithm
+# scyc = use simple cycles instead of min cycle basis
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/lee_nasari_50_rmswcbwexpwsscyc_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -60,8 +72,16 @@ CYC_RBF = False
 #CYC_SIG_PARAM 3 and 4 are used by exp(- (w1-param3)^2 / param4)
 CYC_SIG_PARAM_3 = 1.0
 CYC_SIG_PARAM_4 = 20.0
-MAX_PROC = 36
-PROC_BATCH_SIZE = 36
+MAX_PROC = multiprocessing.cpu_count()
+PROC_BATCH_SIZE = multiprocessing.cpu_count()
+# use simple cycles instead of min cycle basis
+SIMPLE_CYCLES = True
+# swtich for lee
+LEE = True
+# switch for lee vs leebg
+LEE_VS_LEEBG = False
+# switch for Li65
+LI65 = False
 
 SAVE_CYCLES = False
 
@@ -158,6 +178,9 @@ def send_wordsim_request(mode, input_1, input_2):
     global SEND_PORT_NASARI
     global SEND_ADDR_ADW
     global SEND_ADDR_NASARI
+    global RAND_SEED
+    global MULTI_WS_SERV_MOD
+    global MULTI_WS_SERV
    
     c_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     c_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -174,6 +197,13 @@ def send_wordsim_request(mode, input_1, input_2):
         send_str = input_1 + '#' + input_2
         send_port = SEND_PORT_NASARI
         send_addr = SEND_ADDR_NASARI
+        if MULTI_WS_SERV:
+            RAND_SEED += 1
+            RAND_SEED = int(RAND_SEED)
+            RAND_SEED &= 0xffffffffL
+            numpy.random.seed(RAND_SEED)
+            send_port += numpy.random.randint(MULTI_WS_SERV_MOD)
+            #print "[DBG]: connecting port %s" % send_port
     elif mode == 'tt':
         send_str = mode + '#' + input_1 + '#' + input_2
         send_port = SEND_PORT_ADW
@@ -327,7 +357,7 @@ def get_tags_n_leaves(cycle):
 def validate_cycle(cycle):
     ret = True
     s1_nodes, s2_nodes = get_tags_n_leaves(cycle)
-    if len(s1_nodes["leaves"]) > 2 or len(s2_nodes["leaves"]) > 2 or (len(s1_nodes["tags"]) == 0 and len(s2_nodes["tags"]) ==0):
+    if len(s1_nodes["leaves"]) > 2 or len(s2_nodes["leaves"]) > 2 or len(s1_nodes["leaves"]) == 0 or len(s2_nodes["leaves"]) ==0 or len(s1_nodes["leaves"]) + len(s2_nodes["leaves"]) < 3 or (len(s1_nodes["tags"]) == 0 and len(s2_nodes["tags"]) ==0):
         ret = False
     return ret, s1_nodes["leaves"], s2_nodes["leaves"]
 
@@ -441,6 +471,32 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
     #print "[DBG]: ----------------------------------------"
     return min_cycle_basis
 
+# this function is an alternative to find_min_cycle_basis
+# instead of finding a min cycle basis, we find all simple cycles
+# the weights are not necessary in finding simple cycles
+# NetworkX only support di-graphs for finding simple cycles, so
+# we convert our undi-graph to a di-graph.
+def find_simple_cycles(graph, tree_1, tree_2):
+    DiG = nx.DiGraph(graph)
+    l_simple_cycles = list(nx.simple_cycles(DiG))
+    #print "[DBG]: orig simple_cycles = "
+    #print l_simple_cycles
+    l_ret_cycles = []
+    for cyc in l_simple_cycles:
+        v, sub_s1, sub_s2 = validate_cycle(cyc)
+        if v:
+            cand_mark = True
+            for cyc_cand in l_ret_cycles:
+                if set(cyc) == set(cyc_cand):
+                    cand_mark = False
+                    break
+            if cand_mark:
+                l_ret_cycles.append(cyc)
+    print "[DBG]: find %s simple cycles." % len(l_ret_cycles)
+    return l_ret_cycles
+
+
+
 def cal_cycle_weight(cycle, inter_edges):
     s1_nodes, s2_nodes = get_tags_n_leaves(cycle)
     if len(s1_nodes["leaves"]) > 2 or len(s2_nodes["leaves"]) > 2:
@@ -484,7 +540,10 @@ def sim_from_tree_pair_graph(inter_edges, graph, tree_1, tree_2):
     words_with_tags = []
     if len(inter_edges) < 2:
         return 0, [], []
-    min_cycle_basis = find_min_cycle_basis(graph, tree_1, tree_2)
+    if SIMPLE_CYCLES:
+        min_cycle_basis = find_simple_cycles(graph, tree_1, tree_2)
+    else:
+        min_cycle_basis = find_min_cycle_basis(graph, tree_1, tree_2)
     for cycle in min_cycle_basis:
         if len(cycle) < 3:
             print "[ERR]: Invalid cycle in the basis: "
@@ -540,6 +599,7 @@ def count_cycles_and_record(doc_1, doc_2, cycle_count):
         print e
 
 def doc_pair_sim(doc1, doc2):
+    start = time.time()
     # global RECV_PORT
     # sim_arr = multiprocessing.Array(ctypes.c_double, num_sent_pairs)
     # sim_arr_i = 0
@@ -566,7 +626,7 @@ def doc_pair_sim(doc1, doc2):
         for doc2_s_id, sent_treestr_2 in enumerate(l_sent_treestr_2):
             #TODO:
             sim_res, min_cycle_basis, word_list = sent_pair_sim(sent_treestr_1, sent_treestr_2)
-            cycle_count += len(min_cycle_basis)
+            #cycle_count += len(min_cycle_basis)
             #print "[DBG]: len of min_cycle_basis is %s" % len(min_cycle_basis)
             if len(min_cycle_basis) > 0:
                 l_cyc_count_per_sent_pair.append(1)
@@ -612,6 +672,8 @@ def doc_pair_sim(doc1, doc2):
     else:
         out_json = [doc_sim, ','.join(set(doc_word_list))]
     write_intermedia_to_file(doc1[0],doc2[0], out_json)
+    end = time.time()
+    print "[DBG]: Doc pair costs %s" % (end - start)
     # with open('/home/fcmeng/workspace/doc_pair_sim/%s-%s' % (, 'a+') as f_out:
     #     json.dumps(out_json,f_out)
     #     f_out.close()
@@ -692,6 +754,7 @@ def text_sim(db_cur):
         for j, doc2 in enumerate(rows):
             if i<j:
                 valid_doc1, valid_doc2 = validate_doc_trees(doc1[1], doc2[1])
+                print "[DBG]: doc pairs = %s : %s" % (doc1[0], doc2[0])
                 p = multiprocessing.Process(target=doc_pair_sim, args=((doc1[0],valid_doc1), (doc2[0],valid_doc2)))
                 proc_id += 1
                 sim_procs.append(p)
@@ -716,23 +779,111 @@ def text_sim(db_cur):
     # sim = doc_pair_sim(l_sent_treestr_1, l_sent_treestr_2, len(l_sent_treestr_1)*len(l_sent_treestr_2))
     # return sim
 
+# this function is used to compare each lee doc with all leebg docs
+# we use this function is to obtain GPs for lee docs
+def text_sim_lee_vs_leebg(lee_db_cur, leebg_db_cur):
+    print "[INF]: Lee vs LeeBG ..."
+    lee_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
+    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '13' OR doc_id = '31'")
+    lee_rows = lee_db_cur.fetchall()
+    print "[DBG]: lee_rows = %s" % len(lee_rows)
 
+    leebg_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
+    leebg_rows = leebg_db_cur.fetchall()
+    print "[DBG]: leebg_rows = %s" % len(leebg_rows)
+
+    total_doc_pair_count = len(lee_rows) * len(leebg_rows)
+    print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 
+
+    sim_procs = []
+    proc_id = 0
+    proc_batch = 0
+    for i, doc1 in enumerate(lee_rows):
+        for j, doc2 in enumerate(leebg_rows):
+            valid_doc1, valid_doc2 = validate_doc_trees(doc1[1], doc2[1])
+            p = multiprocessing.Process(target=doc_pair_sim, args=((doc1[0],valid_doc1), (doc2[0],valid_doc2)))
+            proc_id += 1
+            sim_procs.append(p)
+            p.start()
+            if proc_id >= PROC_BATCH_SIZE:
+                proc_batch += 1
+                proc_id = 0
+            if len(sim_procs) >= MAX_PROC:
+                # print "[DBG]: cool down 1"
+                sim_procs_cool_down(sim_procs)
+                print "[INF]: {0:.0%} done!".format(float(proc_batch*PROC_BATCH_SIZE) / float(total_doc_pair_count))
+    sim_procs_cool_down(sim_procs)
+    print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count)/float(total_doc_pair_count))
+
+# this function is used for Li65 sentence comparison
+def text_sim_li65(col1_db_cur, col2_db_cur):
+    print "[INF]: Li65 sentence comparison ..."
+    col1_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
+    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '13' OR doc_id = '31'")
+    col1_rows = col1_db_cur.fetchall()
+    print "[DBG]: col1_rows = %s" % len(col1_rows)
+
+    col2_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
+    col2_rows = col2_db_cur.fetchall()
+    print "[DBG]: col2_rows = %s" % len(col2_rows)
+
+    total_doc_pair_count = len(col1_rows)
+    print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 
+
+    sim_procs = []
+    proc_id = 0
+    proc_batch = 0
+    for i in range(len(col1_rows)):
+        valid_doc1, valid_doc2 = validate_doc_trees(col1_rows[i][1], col2_rows[i][1])
+        p = multiprocessing.Process(target=doc_pair_sim, args=((col1_rows[i][0],valid_doc1), (col2_rows[i][0],valid_doc2)))
+        proc_id += 1
+        sim_procs.append(p)
+        p.start()
+        if proc_id >= PROC_BATCH_SIZE:
+            proc_batch += 1
+            proc_id = 0
+        if len(sim_procs) >= MAX_PROC:
+            # print "[DBG]: cool down 1"
+            sim_procs_cool_down(sim_procs)
+            print "[INF]: {0:.0%} done!".format(float(proc_batch*PROC_BATCH_SIZE) / float(total_doc_pair_count))
+    sim_procs_cool_down(sim_procs)
+    print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count)/float(total_doc_pair_count))
 #err_sent_tree_str = '(ROOT (S L:Actually (VP L:changed (SBAR (S (NP (NP L:default L:line L:endings) (VP L:setting (NP L:version L:git) (SBAR (S (S (VP L:bundle (NP L:Windows L:binaries))) (S L:appveyor (VP L:checking L:test)))))) (VP L:files (NP L:unix L:line L:endings)))))))'
 #|(ROOT (S (VP (VP L:failure (SBAR (S (VP L:run (NP L:test L:data L:files))))) (ADJP L:due (S (S L:equaling))))))'
 
 def main():
 #=========================================================
     # output_file = str(sys.argv[1]).strip()
-    db_conn = sqlite3.connect(DB_CONN_STR)
-    cur = db_conn.cursor()
-    text_sim(cur)
+    start = time.time()
+    if LEE:
+        db_conn = sqlite3.connect(DB_CONN_STR)
+        cur = db_conn.cursor()
+        text_sim(cur)
+        db_conn.close()
+    elif LEE_VS_LEEBG:
+        db_conn = sqlite3.connect(DB_CONN_STR)
+        cur = db_conn.cursor()
+        leebg_db_conn = sqlite3.connect(BGDB_CONN_STR)
+        leebg_cur = leebg_db_conn.cursor()
+        text_sim_lee_vs_leebg(cur, leebg_cur)
+        leebg_db_conn.close()
+        db_conn.close()
+    elif LI65:
+        li65_col1_db_conn = sqlite3.connect(LI65_COL1_CONN_STR)
+        li65_col2_db_conn = sqlite3.connect(LI65_COL2_CONN_STR)
+        li65_col1_db_cur = li65_col1_db_conn.cursor()
+        li65_col2_db_cur = li65_col2_db_conn.cursor()
+        text_sim_li65(li65_col1_db_cur, li65_col2_db_cur)
+        li65_col1_db_conn.close()
+        li65_col2_db_conn.close()
+
     # ret = '|'.join([str(sim)]) + '\n'
     # with open(output_file, 'a+') as f_out:
     #     fcntl.flock(f_out, fcntl.LOCK_EX)
     #     f_out.write(ret)
     #     fcntl.flock(f_out, fcntl.LOCK_UN)
     #     f_out.close()
-    db_conn.close()
+    print "[DBG]: Total time elapse = %s" % (time.time() - start)
     print "ALL DONE!"
     # only for arc stat
     #arc_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
