@@ -30,4 +30,4 @@ def main(project_name, cycle):
 if __name__ == '__main__':
     # Give a folder name, the folder name must match the column name
     # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
-    main('20news50short10_nasari_40_rmswcbwexpws_w3-3', 'cycle')
+    main('leefixsw_nasari_40_rmswcbwexpws_w3-3', 'no cycle')

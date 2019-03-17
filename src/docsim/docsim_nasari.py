@@ -42,12 +42,12 @@ RAND_SEED = 0
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
 #WORD_SIM_MODE = 'adw_tag'
-DB_CONN_STR = '/home/{0}/workspace/data/lee.db'.format(os.environ['USER'])
+DB_CONN_STR = '/home/{0}/workspace/data/20news50short10.db'.format(os.environ['USER'])
 # used for lee vs leebg
-BGDB_CONN_STR = '/home/{0}/workspace/data/leebg.db'.format(os.environ['USER'])
+BGDB_CONN_STR = '/home/{0}/workspace/data/leebgfixsw.db'.format(os.environ['USER'])
 # used for Li65 sentence comparison
-LI65_COL1_CONN_STR = '/home/{0}/workspace/data/Li65/col1.db'.format(os.environ['USER'])
-LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2.db'.format(os.environ['USER'])
+LI65_COL1_CONN_STR = '/home/{0}/workspace/data/Li65/col1_sw.db'.format(os.environ['USER'])
+LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_sw.db'.format(os.environ['USER'])
 # rmsw = remove stopwords
 # cbw = use cb_weight to set inter_edges' weights to very high when computing cycle basis
 # expws = exponentiate word similarities
@@ -58,7 +58,8 @@ LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2.db'.format(os.environ['
 # expn = exponentiate noun similarities
 # wo = weighted overlap simialrity algorithm
 # scyc = use simple cycles instead of min cycle basis
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/lee_nasari_50_rmswcbwexpwsscyc_w3-3/'.format(os.environ['USER'])
+# test = only for test use
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/20news50short10_nasari_50_rmswcbwexpwsscyc_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -76,14 +77,17 @@ MAX_PROC = multiprocessing.cpu_count()
 PROC_BATCH_SIZE = multiprocessing.cpu_count()
 # use simple cycles instead of min cycle basis
 SIMPLE_CYCLES = True
-# swtich for lee
+# swtich for lee and 20news
 LEE = True
 # switch for lee vs leebg
 LEE_VS_LEEBG = False
 # switch for Li65
 LI65 = False
+# swthich for msr
+MSR = False
+MSR_SENT_PAIR_FILE = '/home/{0}/workspace/data/msr/msr_sim.txt'.format(os.environ['USER'])
 
-SAVE_CYCLES = False
+SAVE_CYCLES = True
 
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 
@@ -153,12 +157,12 @@ def identifyNodes(t, idx):
 # given a leaf in a parse tree, this function returns True
 # if this leaf has a significant NER tag, such as ORGANIZATION,
 # LOCATION and MISC; otherwise returns False.
-def has_preserved_ner(leaf_str):
-    tags = leaf_str.split(':')[2]
-    ner = tags.split('#')[3].strip()
-    if ner in PRESERVED_NER_LIST:
-        return True
-    return False
+#def has_preserved_ner(leaf_str):
+#    tags = leaf_str.split(':')[2]
+#    ner = tags.split('#')[3].strip()
+#    if ner in PRESERVED_NER_LIST:
+#        return True
+#    return False
 
 # given a leaf in a parse tree, this function returns 
 # the lowercased word (word itselft without any tags)
@@ -168,10 +172,10 @@ def lowercase_word_by_ner(leaf_str):
     tags = leaf_str.split(':')[2]
     ner = tags.split('#')[3].strip()
     word = tags.split('#')[0].strip()
-    if has_preserved_ner(leaf_str):
-        return word.lower()
-    else:
+    if ner in PRESERVED_NER_LIST:
         return word
+    else:
+        return word.lower()
 
 def send_wordsim_request(mode, input_1, input_2):
     global SEND_PORT_ADW
@@ -198,10 +202,12 @@ def send_wordsim_request(mode, input_1, input_2):
         send_port = SEND_PORT_NASARI
         send_addr = SEND_ADDR_NASARI
         if MULTI_WS_SERV:
-            RAND_SEED += 1
-            RAND_SEED = int(RAND_SEED)
-            RAND_SEED &= 0xffffffffL
-            numpy.random.seed(RAND_SEED)
+            millis = int(round(time.time() * 1000))
+            millis &= 0xffffffffL
+            #RAND_SEED += 1
+            #RAND_SEED = int(RAND_SEED)
+            #RAND_SEED &= 0xffffffffL
+            numpy.random.seed(millis)
             send_port += numpy.random.randint(MULTI_WS_SERV_MOD)
             #print "[DBG]: connecting port %s" % send_port
     elif mode == 'tt':
@@ -610,7 +616,17 @@ def doc_pair_sim(doc1, doc2):
     l_sent_treestr_2 = doc2[1]
     if l_sent_treestr_1 is None or l_sent_treestr_2 is None or len(l_sent_treestr_1) == 0 or len(l_sent_treestr_2) == 0:
         print "[ERR]: Invalid input doc!"
+        print "l_sent_treestr_1 = "
+        print l_sent_treestr_1
+        print "l_sent_treestr_2 = "
+        print l_sent_treestr_2
         #print "create process: " + str(p.pid)
+        if SAVE_CYCLES:
+            out_json = {'sim': 0, 'sentence_pair': {}, 'word_list': []}
+        else:
+            out_json = [0, ""]
+        write_intermedia_to_file(doc1[0],doc2[0], out_json)
+        end = time.time()
         return 0
     #print "[DBG]: parent pid = " + str(os.getpid())
     # if SAVE_CYCLES:
@@ -743,7 +759,7 @@ def validate_doc_trees(doc1_tree, doc2_tree):
 # this function compute the text similarity between two users given a text data within a specified period for each user.
 def text_sim(db_cur):
     db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
-    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '13' OR doc_id = '31'")
+    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '0' OR doc_id = '13'")
     rows = db_cur.fetchall()
     total_doc_pair_count = (len(rows)*(len(rows)-1))/2
     print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 
@@ -848,8 +864,61 @@ def text_sim_li65(col1_db_cur, col2_db_cur):
             print "[INF]: {0:.0%} done!".format(float(proc_batch*PROC_BATCH_SIZE) / float(total_doc_pair_count))
     sim_procs_cool_down(sim_procs)
     print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count)/float(total_doc_pair_count))
-#err_sent_tree_str = '(ROOT (S L:Actually (VP L:changed (SBAR (S (NP (NP L:default L:line L:endings) (VP L:setting (NP L:version L:git) (SBAR (S (S (VP L:bundle (NP L:Windows L:binaries))) (S L:appveyor (VP L:checking L:test)))))) (VP L:files (NP L:unix L:line L:endings)))))))'
-#|(ROOT (S (VP (VP L:failure (SBAR (S (VP L:run (NP L:test L:data L:files))))) (ADJP L:due (S (S L:equaling))))))'
+
+# this function is used for MSR sentence comparison
+def text_sim_msr(msr_db_cur):
+    print "[INF]: MSR sentence comparison ..."
+    # read in sent pairs
+    sent_pair_fd = open(MSR_SENT_PAIR_FILE, 'r')
+    sent_pair_fd.seek(0, 0)
+    l_sent_pairs = []
+    sent_pair_lines = sent_pair_fd.readlines()
+    for sp_line in sent_pair_lines:
+        sent_pair = []
+        sp = sp_line.split(':')[0].split('#')
+        sent_1_idx = sp[0].strip()
+        sent_2_idx = sp[1].strip()
+        msr_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE doc_id = ?', (sent_1_idx,))
+        #msr_db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '1984954'")
+        msr_row = msr_db_cur.fetchone()
+        if msr_row[1] is None or len(msr_row[1]) == 0:
+            print "[ERR]: An incorrect parse tree for %s" % sent_1_idx
+            continue
+        else:
+           sent_pair.append(sent_1_idx)
+           sent_pair.append(msr_row[1])
+        #msr_db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '1984531'")
+        msr_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE doc_id = ?', (sent_2_idx,))
+        msr_row = msr_db_cur.fetchone()
+        if msr_row[1] is None or len(msr_row[1]) == 0:
+            print "[ERR]: An incorrect parse tree for %s" % sent_2_idx
+            continue
+        else:
+           sent_pair.append(sent_2_idx)
+           sent_pair.append(msr_row[1])
+        l_sent_pairs.append(sent_pair)
+    total_doc_pair_count = len(l_sent_pairs)
+    print "[DBG]: Total %s sent pairs to go..." % total_doc_pair_count 
+    sent_pair_fd.close()
+
+    sim_procs = []
+    proc_id = 0
+    proc_batch = 0
+    for sent_pair in l_sent_pairs:
+        valid_doc1, valid_doc2 = validate_doc_trees(sent_pair[1], sent_pair[3])
+        p = multiprocessing.Process(target=doc_pair_sim, args=((sent_pair[0],valid_doc1), (sent_pair[2],valid_doc2)))
+        proc_id += 1
+        sim_procs.append(p)
+        p.start()
+        if proc_id >= PROC_BATCH_SIZE:
+            proc_batch += 1
+            proc_id = 0
+        if len(sim_procs) >= MAX_PROC:
+            # print "[DBG]: cool down 1"
+            sim_procs_cool_down(sim_procs)
+            print "[INF]: {0:.0%} done!".format(float(proc_batch*PROC_BATCH_SIZE) / float(total_doc_pair_count))
+    sim_procs_cool_down(sim_procs)
+    print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count)/float(total_doc_pair_count))
 
 def main():
 #=========================================================
@@ -876,6 +945,11 @@ def main():
         text_sim_li65(li65_col1_db_cur, li65_col2_db_cur)
         li65_col1_db_conn.close()
         li65_col2_db_conn.close()
+    elif MSR:
+        msr_db_conn = sqlite3.connect(DB_CONN_STR)
+        msr_db_cur = msr_db_conn.cursor()
+        text_sim_msr(msr_db_cur)
+        msr_db_conn.close()
 
     # ret = '|'.join([str(sim)]) + '\n'
     # with open(output_file, 'a+') as f_out:

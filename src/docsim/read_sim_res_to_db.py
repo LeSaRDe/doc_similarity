@@ -17,7 +17,7 @@ def update_sim(doc_key,  col, sim, count, doc_key1=None):
 def main(project_name, cycle):
 
     dataset_name, col_name = project_name[:project_name.find('_')], project_name[project_name.find('_')+1:]
-    if dataset_name == 'lee':
+    if dataset_name == 'lee' or dataset_name == 'leefixsw':
         TOTAL_DOC = 50
     elif dataset_name == "20news18828":
         TOTAL_DOC = 18828
@@ -95,4 +95,4 @@ if __name__ == '__main__':
 
     # Give a folder name, the folder name must match the column name
     # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
-    main('20news50short10_nasari_40_rmswcbwexpws_w3-3', 'cycle')
+    main('leefixsw_nasari_50_rmswcbwexpwsscyc_w3-3', 'no cycle')

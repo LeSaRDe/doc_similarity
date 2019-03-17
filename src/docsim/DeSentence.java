@@ -203,6 +203,10 @@ public class DeSentence
     // check if the input word is a stopword
     public boolean isStopword(String word)
     {
+        if(!Constants.RM_STOPWORDS)
+        {
+            return false;
+        }
         int ret = Arrays.binarySearch(m_l_stopwords, word.toLowerCase());
         //System.out.println("[DBG]: " + "binarySearch " + word + ":" + ret);
         return (ret < 0) ? false : true;
