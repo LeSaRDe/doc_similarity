@@ -35,7 +35,7 @@ SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
-MULTI_WS_SERV = True
+MULTI_WS_SERV = False
 MULTI_WS_SERV_MOD = 4
 RAND_SEED = 0
 # the other option is 'adw'
@@ -59,7 +59,7 @@ LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_sw.db'.format(os.enviro
 # wo = weighted overlap simialrity algorithm
 # scyc = use simple cycles instead of min cycle basis
 # test = only for test use
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/20news50short10_nasari_50_rmswcbwexpwsscyc_w3-3/'.format(os.environ['USER'])
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/20news50short10_nasari_50_rmswcbwexpwsscyc_makeup_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -484,6 +484,7 @@ def find_min_cycle_basis(graph, tree_1, tree_2):
 # we convert our undi-graph to a di-graph.
 def find_simple_cycles(graph, tree_1, tree_2):
     DiG = nx.DiGraph(graph)
+    DiG = graph.to_directed()
     l_simple_cycles = list(nx.simple_cycles(DiG))
     #print "[DBG]: orig simple_cycles = "
     #print l_simple_cycles
@@ -758,8 +759,8 @@ def validate_doc_trees(doc1_tree, doc2_tree):
 
 # this function compute the text similarity between two users given a text data within a specified period for each user.
 def text_sim(db_cur):
-    db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
-    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '0' OR doc_id = '13'")
+    # db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
+    db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = 'talk.politics.mideast/77290' OR doc_id = 'talk.politics.mideast/77256'")
     rows = db_cur.fetchall()
     total_doc_pair_count = (len(rows)*(len(rows)-1))/2
     print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 

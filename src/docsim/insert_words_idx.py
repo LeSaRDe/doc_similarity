@@ -21,8 +21,9 @@ def insert_words_idx(db_conn, file_path):
 
     for i, word in enumerate(full_word_list):
         cur.execute('INSERT INTO words_idx (word, idx) VALUES (?, ?)', (word, i))
-        if i % 500 == 0:
+        if i % 1000 == 0:
             db_conn.commit()
+            print "%i words inserted" % i
 
     db_conn.commit()
     cur.close()
@@ -33,14 +34,15 @@ def insert_words_idx(db_conn, file_path):
 
 def insert_word_pair_idx(db_conn, total):
     cur = db_conn.cursor()
+    total_word_pairs = total * (total-1) /2
 
     exist_rows = cur.execute('SELECT count(word_pair_idx) FROM words_sim').fetchone()[0]
-    if 0 < exist_rows != total * (total-1) /2:
+    if 0 < exist_rows != total_word_pairs:
         cur.close()
         raise Exception(
             "[Err]Word pair idx already exist in table, but number of idx (%s) doesn't match total combination of "
-            "words (%s)! Need manual check!" % (exist_rows, total * (total-1) /2))
-    elif exist_rows == total * (total-1) /2:
+            "words (%s)! Need manual check!" % (exist_rows, total_word_pairs))
+    elif exist_rows == total_word_pairs:
         print "Total %s word pair index are already saved in words_idx, no need to insert." % exist_rows
         return
 
@@ -51,15 +53,16 @@ def insert_word_pair_idx(db_conn, total):
             word_pair_idx = idx_bit_translate.keys_to_key(i, j)
             cur.execute('INSERT INTO words_sim (word_pair_idx) VALUES (?)', (word_pair_idx, ))
             cnt += 1
-            if cnt % 500 == 0:
+            if cnt % 5000 == 0:
                 db_conn.commit()
+                print "%s/%s words pair idx inserted" % (cnt, total_word_pairs)
     db_conn.commit()
     cur.close()
 
-    if cnt != total * (total-1) /2:
+    if cnt != total_word_pairs:
         raise Exception(
             "[Err]Insert %s Word pair idx into table, but doesn't match total combination of "
-            "words (%s)! Need manual check!" % (cnt, total * (total - 1) / 2))
+            "words (%s)! Need manual check!" % (cnt, total_word_pairs))
 
     print "Total %s word pair idx insert into table words_sim." % cnt
 

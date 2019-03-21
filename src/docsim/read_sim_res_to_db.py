@@ -95,4 +95,4 @@ if __name__ == '__main__':
 
     # Give a folder name, the folder name must match the column name
     # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
-    main('leefixsw_nasari_50_rmswcbwexpwsscyc_w3-3', 'no cycle')
+    main('20news50short10_nasari_50_rmswcbwexpwsscyc_w3-3', 'cycle')

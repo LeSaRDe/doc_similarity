@@ -49,17 +49,20 @@ def words_sim_by_nasari(w1, w2):
     return float(msg)
 
 
-def word_pair_sim(word_pair_idx, full_word_dict):
+def word_pair_sim(word_pair_idx, full_word_dict, sim_arr, ii):
     w1_idx, w2_idx = idx_bit_translate.key_to_keys(word_pair_idx)
     word1 = full_word_dict[w1_idx]
     word2 = full_word_dict[w2_idx]
     sim = words_sim_by_nasari(str(word1), str(word2))
-    # sim_arr[ii] = sim
-    return sim
+    sim_arr[ii] = sim
+    return
 
 
 def words_pair_sim(full_word_dict):
     batch_size = 20000
+    os_pro = multiprocessing.cpu_count()
+    # For debug, must ONLY run 1 process
+    # os_pro = 1
 
     cur = conn.cursor()
     unsimed_words_pair_cnt = cur.execute("SELECT count(word_pair_idx) FROM words_sim where sim is null").fetchone()[0]
@@ -68,6 +71,7 @@ def words_pair_sim(full_word_dict):
         print "No unsimed word pair."
     else:
         unsimed_words_pair = cur.execute("SELECT word_pair_idx FROM words_sim where sim is null LIMIT ?", (batch_size,)).fetchall()
+        cur.close()
 
         if len(unsimed_words_pair) < batch_size:
             batch_size = len(unsimed_words_pair)
@@ -75,29 +79,25 @@ def words_pair_sim(full_word_dict):
         total_finished_sim = 0
         start = time.time()
         while unsimed_words_pair:
+            sim_procs = []
+            word_pair_pid_idx = dict()
+            sim_arr = multiprocessing.Array(ctypes.c_double, batch_size)
             for sim_arr_i, word_pair_idx in enumerate(unsimed_words_pair):
-                sim = word_pair_sim(word_pair_idx[0], full_word_dict)
-                cur.execute('UPDATE words_sim SET sim=? where word_pair_idx=?', (sim, word_pair_idx[0]))
-            conn.commit()
+                word_pair_pid_idx[sim_arr_i] = word_pair_idx[0]
+                p = multiprocessing.Process(target=word_pair_sim, args=(word_pair_idx[0], full_word_dict, sim_arr, sim_arr_i))
+                sim_procs.append(p)
+                p.start()
 
-            # sim_procs = []
-            # word_pair_pid_idx = dict()
-            # sim_arr = multiprocessing.Array(ctypes.c_double, batch_size)
-            # sim_arr =
-            # for sim_arr_i, word_pair_idx in enumerate(unsimed_words_pair):
-            #     word_pair_pid_idx[sim_arr_i] = word_pair_idx[0]
-                # p = multiprocessing.Process(target=word_pair_sim, args=(word_pair_idx[0], full_word_dict, sim_arr, sim_arr_i))
-                # sim_procs.append(p)
-                # p.start()
-                #
-                # if len(sim_procs) == os_pro:
-                #     for running_p in sim_procs:
-                #         running_p.join()
-                #     sim_procs = []
-            # write_sim_batch_to_db(sim_arr, word_pair_pid_idx)
+                if len(sim_procs) == os_pro:
+                    for running_p in sim_procs:
+                        running_p.join()
+                    sim_procs = []
+            write_sim_batch_to_db(sim_arr, word_pair_pid_idx)
             total_finished_sim += batch_size
 
+            cur = conn.cursor()
             unsimed_words_pair = cur.execute("SELECT word_pair_idx FROM words_sim where sim is null LIMIT ?", (batch_size,)).fetchall()
+            cur.close()
 
             if len(unsimed_words_pair) < batch_size:
                 batch_size = len(unsimed_words_pair)
@@ -106,7 +106,6 @@ def words_pair_sim(full_word_dict):
                   total_finished_sim, unsimed_words_pair_cnt, float(total_finished_sim * 100) / unsimed_words_pair_cnt, time.time() - start)
 
         print "Word pair sim done!"
-        cur.close()
 
 
 def write_sim_batch_to_db(sim_arr, word_pair_pid_idx):
