@@ -3,7 +3,6 @@ import json
 import sqlite3
 import pandas as pd
 import build_single_doc_apv
-import time
 import idx_bit_translate
 import multiprocessing
 
@@ -39,8 +38,8 @@ def get_doc_ids():
 
 def get_word_pair_sims():
     pairwise_sims = dict()
-    all_sims = cur.execute('SELECT * from words_sim WHERE sim > 0.4 order by word_pair_idx').fetchall()
-    print "Sim > 0.4, total word pairs=%s " % len(all_sims)
+    all_sims = cur.execute('SELECT * from words_sim WHERE sim >= 0.4 order by word_pair_idx').fetchall()
+    print "Sim >= 0.4, total word pairs=%s " % len(all_sims)
     all_words_idx = cur.execute('SELECT * from words_idx').fetchall()
     all_idx_word = dict()
     for word, idx in all_words_idx:
@@ -61,23 +60,21 @@ def build_apv_matrix(phrase_cluster_by_clusterid, folder):
 
     apv_df = pd.DataFrame(cluster_ids, columns=['cluster_id'])
 
-    apv_processes = []
     for i, each_doc in enumerate(doc_ids):
         top_sim_docs = find_top_sim_doc_pairs(each_doc[0])
-        start = time.time()
         apv_vec = build_single_doc_apv.build_single_doc_apv(phrase_cluster_by_clusterid=phrase_cluster_by_clusterid,
                                                             word_pair_sims=word_pair_sims,
-                                                            target_doc_id=each_doc,
+                                                            target_doc_id=each_doc[0],
                                                             compare_sim_docs=top_sim_docs,
                                                             json_files_path=folder,
                                                             in_cur=cur)
-        print "[%s]Time: %s" % (i, time.time()-start)
         apv_df[each_doc[0]] = apv_df['cluster_id'].map(apv_vec)
     return apv_df
 
 
 def proc_cool_down(apv_processes):
-    while len(apv_processes) >= multiprocessing.cpu_count():
+    # while len(apv_processes) >= multiprocessing.cpu_count():
+    while len(apv_processes) >= 10:
         for proc in apv_processes:
             if proc.pid != os.getpid():
                 proc.join(1)
@@ -97,7 +94,7 @@ def build_apv_matrix_parallel(phrase_cluster_by_clusterid, folder):
     for i, each_doc in enumerate(doc_ids):
         top_sim_docs = find_top_sim_doc_pairs(each_doc[0])
         p = multiprocessing.Process(target=build_single_doc_apv.build_single_doc_apv,
-                                    args=(phrase_cluster_by_clusterid, word_pair_sims, each_doc, top_sim_docs, folder, cur))
+                                    args=(phrase_cluster_by_clusterid, word_pair_sims, each_doc[0], top_sim_docs, folder, cur))
         apv_processes.append(p)
         p.start()
         proc_cool_down(apv_processes)
@@ -105,7 +102,7 @@ def build_apv_matrix_parallel(phrase_cluster_by_clusterid, folder):
 
 def find_top_sim_doc_pairs(doc_id):
     if TOP_SIM_DOCS == -1:
-        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%" order by "%s" DESC''' % (doc_id, col_name)
+        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%"''' % doc_id
     else:
         query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%" order by "%s" DESC limit %s''' % (doc_id, col_name, TOP_SIM_DOCS)
     cur.execute(query)
@@ -150,10 +147,10 @@ def main(folder):
                       'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7,
                       'rec.sport.hockey': 8, 'talk.politics.mideast': 9}
     # if TOP_SIM_DOCS is set to -1, then all documents are taken into account.
-    TOP_SIM_DOCS = -1
-    #TOP_SIM_DOCS = 30
+    # TOP_SIM_DOCS = -1
+    TOP_SIM_DOCS = 50
 
-    parallel = False
+    parallel = True
 
     if parallel:
         build_apv_matrix_parallel(phrase_cluster_by_clusterid, data_path + folder)

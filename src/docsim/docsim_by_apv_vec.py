@@ -40,7 +40,7 @@ def main(apv_csv_file):
     for i, doc1 in enumerate(doc_ids):
         for j, doc2 in enumerate(doc_ids[i+1:]):
             sim = compare_two_apvs(apv_df[doc1], apv_df[doc2], 'cosine')
-            update_sim(doc1+"#"+doc2, sim, cnt, doc2+"#"+doc1)
+            update_sim(doc1.replace("_", "/")+"#"+doc2.replace("_", "/"), sim, cnt, doc2.replace("_", "/")+"#"+doc1.replace("_", "/"))
             cnt += 1
     conn.commit()
     cur.close()
@@ -50,4 +50,4 @@ def main(apv_csv_file):
     print "ALL DONE!"
 
 
-main('20news50short10_rbsc_apv_matrix.csv')
+main('20news50short10_nasari_40_rmswcbwexpws_w3-3_apv_matrix.csv')

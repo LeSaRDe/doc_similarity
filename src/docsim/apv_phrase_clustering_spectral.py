@@ -373,28 +373,40 @@ def create_phrase_graph(l_phrase_pairs):
 
         if p1_in_graph is None:
             p1_in_graph = '#'.join(p1[0])
-            p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
+            # p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
+            p_graph.add_node(p1_in_graph, cnt=1, loc={p1[1]: [p1[2]]})
         else:
-            if p1[1] not in p_graph.node[p1_in_graph]['loc']:
+            if p1[1] not in p_graph.node[p1_in_graph]['loc'].keys():
                 p_graph.node[p1_in_graph]['cnt'] += 1
-                p_graph.node[p1_in_graph]['loc'].append(p1[1])
-                p_graph.node[p1_in_graph]['arc'].append(p1[2])
+                p_graph.node[p1_in_graph]['loc'][p1[1]] = [p1[2]]
+            else:
+                p_graph.node[p1_in_graph]['cnt'] += 1
+                p_graph.node[p1_in_graph]['loc'][p1[1]].append(p1[2])
 
         if p2_in_graph is None:
             p2_in_graph = '#'.join(p2[0])
-            p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])
+            # p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])
+            p_graph.add_node(p2_in_graph, cnt=1, loc={p2[1]: [p2[2]]})
         else:
-            if p2[1] not in p_graph.node[p2_in_graph]['loc']:
+            if p2[1] not in p_graph.node[p2_in_graph]['loc'].keys():
                 p_graph.node[p2_in_graph]['cnt'] += 1
-                p_graph.node[p2_in_graph]['loc'].append(p2[1])
-                p_graph.node[p2_in_graph]['arc'].append(p2[2])
+                p_graph.node[p2_in_graph]['loc'][p2[1]] = [p2[2]]
+                # p_graph.node[p2_in_graph]['arc'].append(p2[2])
+            else:
+                p_graph.node[p2_in_graph]['cnt'] += 1
+                p_graph.node[p2_in_graph]['loc'][p2[1]].append(p2[2])
 
         if not p_graph.has_edge(p1_in_graph, p2_in_graph):
             p_sim = get_phrase_sim(p1[0], p2[0])
             p_graph.add_edge(p1_in_graph, p2_in_graph, weight=p_sim)
 
     for n_str, n_attrs in list(p_graph.nodes(data=True)):
-        if len(n_attrs['loc']) != len(n_attrs['arc']):
+        # if len(n_attrs['loc']) != len(n_attrs['arc']):
+        #     print "[ERR] Loc Arc not match", n_str, n_attrs
+        sum_arcs = 0
+        for loc, arcs in n_attrs.values().items():
+            sum_arcs += len(arcs)
+        if n_attrs['cnt'] != sum_arcs:
             print "[ERR] Loc Arc not match", n_str, n_attrs
 
     return p_graph
@@ -554,4 +566,7 @@ def main(folder):
     dump_rbsc_clusters(d_clusters)
     print '[INF]: recursive bi-spectral-clustering dump is done!'
 
+
+# We found that the same phrase in the same sentence and same location has different arcs
+# This program saves phrases each arc from each cycle
 main('20news50short10_nasari_40_rmswcbwexpws_w3-3')
