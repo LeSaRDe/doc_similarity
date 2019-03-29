@@ -8,6 +8,7 @@ import multiprocessing
 
 PHRASE_CLUSTER_METHOD = 'rbsc'
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
+WORD_SIM_THRESHOLD = 0.5
 
 
 def get_doc_sim_from_db(col):
@@ -38,8 +39,8 @@ def get_doc_ids():
 
 def get_word_pair_sims():
     pairwise_sims = dict()
-    all_sims = cur.execute('SELECT * from words_sim WHERE sim >= 0.4 order by word_pair_idx').fetchall()
-    print "Sim >= 0.4, total word pairs=%s " % len(all_sims)
+    all_sims = cur.execute('SELECT * from words_sim WHERE sim >= %s order by word_pair_idx' % WORD_SIM_THRESHOLD).fetchall()
+    print "Sim >= 0.3, total word pairs=%s " % len(all_sims)
     all_words_idx = cur.execute('SELECT * from words_idx').fetchall()
     all_idx_word = dict()
     for word, idx in all_words_idx:
@@ -61,12 +62,16 @@ def build_apv_matrix(phrase_cluster_by_clusterid, folder):
     apv_df = pd.DataFrame(cluster_ids, columns=['cluster_id'])
 
     for i, each_doc in enumerate(doc_ids):
+        if os.path.isfile(out_apv_files_path+each_doc[0].replace('/', '_')+'.json'):
+            print "%s apv vec is already exist." % each_doc[0]
+            continue
         top_sim_docs = find_top_sim_doc_pairs(each_doc[0])
         apv_vec = build_single_doc_apv.build_single_doc_apv(phrase_cluster_by_clusterid=phrase_cluster_by_clusterid,
                                                             word_pair_sims=word_pair_sims,
                                                             target_doc_id=each_doc[0],
                                                             compare_sim_docs=top_sim_docs,
                                                             json_files_path=folder,
+                                                            out_files_path=out_apv_files_path,
                                                             in_cur=cur)
         apv_df[each_doc[0]] = apv_df['cluster_id'].map(apv_vec)
     return apv_df
@@ -88,13 +93,23 @@ def build_apv_matrix_parallel(phrase_cluster_by_clusterid, folder):
     cluster_size = len(cluster_ids)
     print "Cluster size=%s" % cluster_size
     doc_ids = get_doc_ids()
+    # doc_ids = [(u'talk.politics.mideast/77262',) ,
+    # (u'talk.politics.mideast/77302',) ,
+    # (u'talk.politics.mideast/77321',) ,
+    # (u'talk.politics.mideast/77324',) ,
+    # (u'talk.politics.mideast/77353',) ,
+    # (u'talk.politics.mideast/77399',)]
     word_pair_sims = get_word_pair_sims()
 
     apv_processes = []
     for i, each_doc in enumerate(doc_ids):
+        if os.path.isfile(out_apv_files_path+each_doc[0].replace('/', '_')+'.json'):
+            print "%s apv vec is already exist." % each_doc[0]
+            continue
         top_sim_docs = find_top_sim_doc_pairs(each_doc[0])
         p = multiprocessing.Process(target=build_single_doc_apv.build_single_doc_apv,
-                                    args=(phrase_cluster_by_clusterid, word_pair_sims, each_doc[0], top_sim_docs, folder, cur))
+                                    args=(phrase_cluster_by_clusterid, word_pair_sims, each_doc[0], top_sim_docs,
+                                          folder, out_apv_files_path, cur))
         apv_processes.append(p)
         p.start()
         proc_cool_down(apv_processes)
@@ -111,14 +126,18 @@ def find_top_sim_doc_pairs(doc_id):
 
 
 def main(folder):
-    global dataset, data_path, col_name
+    global dataset, data_path, col_name, out_apv_files_path
     dataset = folder[:folder.find('_')]
     data_path = '%s/workspace/data/' % os.environ['HOME']
     col_name = folder[folder.find('_') + 1:]
 
+    out_apv_files_path = data_path+folder+'_top5ws50_apv_vec/'
+
     global conn, cur
     conn = sqlite3.connect("%s%s.db" % (data_path, dataset))
     cur = conn.cursor()
+
+
 
     # !!MUST confirm that the following 2 files are one to one match, otherwise the result is WRONG!!
     # with open(data_path+dataset+'_'+PHRASE_CLUSTER_METHOD+"_phrase_clusters_by_phrase.json",'r') as infile:
@@ -148,7 +167,7 @@ def main(folder):
                       'rec.sport.hockey': 8, 'talk.politics.mideast': 9}
     # if TOP_SIM_DOCS is set to -1, then all documents are taken into account.
     # TOP_SIM_DOCS = -1
-    TOP_SIM_DOCS = 50
+    TOP_SIM_DOCS = 5
 
     parallel = True
 
@@ -161,4 +180,4 @@ def main(folder):
 
 if __name__ == '__main__':
     # must have the phrase cluster saved in json files
-    main("20news50short10_nasari_40_rmswcbwexpws_w3-3")
+    main("20news50short10_nasari_30_rmswcbwexpws_w3-3")

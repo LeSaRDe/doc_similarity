@@ -373,40 +373,28 @@ def create_phrase_graph(l_phrase_pairs):
 
         if p1_in_graph is None:
             p1_in_graph = '#'.join(p1[0])
-            # p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
-            p_graph.add_node(p1_in_graph, cnt=1, loc={p1[1]: [p1[2]]})
+            p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
         else:
-            if p1[1] not in p_graph.node[p1_in_graph]['loc'].keys():
+            if p1[1] not in p_graph.node[p1_in_graph]['loc']:
                 p_graph.node[p1_in_graph]['cnt'] += 1
-                p_graph.node[p1_in_graph]['loc'][p1[1]] = [p1[2]]
-            else:
-                p_graph.node[p1_in_graph]['cnt'] += 1
-                p_graph.node[p1_in_graph]['loc'][p1[1]].append(p1[2])
+                p_graph.node[p1_in_graph]['loc'].append(p1[1])
+                p_graph.node[p1_in_graph]['arc'].append(p1[2])
 
         if p2_in_graph is None:
             p2_in_graph = '#'.join(p2[0])
-            # p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])
-            p_graph.add_node(p2_in_graph, cnt=1, loc={p2[1]: [p2[2]]})
+            p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])
         else:
-            if p2[1] not in p_graph.node[p2_in_graph]['loc'].keys():
+            if p2[1] not in p_graph.node[p2_in_graph]['loc']:
                 p_graph.node[p2_in_graph]['cnt'] += 1
-                p_graph.node[p2_in_graph]['loc'][p2[1]] = [p2[2]]
-                # p_graph.node[p2_in_graph]['arc'].append(p2[2])
-            else:
-                p_graph.node[p2_in_graph]['cnt'] += 1
-                p_graph.node[p2_in_graph]['loc'][p2[1]].append(p2[2])
+                p_graph.node[p2_in_graph]['loc'].append(p2[1])
+                p_graph.node[p2_in_graph]['arc'].append(p2[2])
 
         if not p_graph.has_edge(p1_in_graph, p2_in_graph):
             p_sim = get_phrase_sim(p1[0], p2[0])
             p_graph.add_edge(p1_in_graph, p2_in_graph, weight=p_sim)
 
     for n_str, n_attrs in list(p_graph.nodes(data=True)):
-        # if len(n_attrs['loc']) != len(n_attrs['arc']):
-        #     print "[ERR] Loc Arc not match", n_str, n_attrs
-        sum_arcs = 0
-        for loc, arcs in n_attrs.values().items():
-            sum_arcs += len(arcs)
-        if n_attrs['cnt'] != sum_arcs:
+        if len(n_attrs['loc']) != len(n_attrs['arc']):
             print "[ERR] Loc Arc not match", n_str, n_attrs
 
     return p_graph
@@ -432,6 +420,18 @@ def build_aff_mat(p_graph):
     return adj_mat
 
 
+def pred_cluster_size(p_graph, max_diameter):
+    comp_graph_avg_deg = math.floor(sum(dict(p_graph.degree()).values()) / p_graph.number_of_nodes())
+    pred_c_size = 1
+    for i in range(max_diameter):
+        pred_c_size += math.pow(comp_graph_avg_deg, i + 1)
+    pred_c_size = 1 + comp_graph_avg_deg + math.pow(comp_graph_avg_deg, 2) + math.pow(comp_graph_avg_deg, 3)
+    pred_n_clusters = int(math.ceil(p_graph.number_of_nodes() / float(pred_c_size)))
+    if pred_n_clusters < 2:
+        pred_n_clusters = 2
+    return pred_n_clusters
+
+
 def phrase_clustering(p_graph, aff_mat, init_n_clusters, max_diameter):
     print '[DBG]: enter phrase_clustering: p_graph: '
     print nx.info(p_graph)
@@ -447,6 +447,7 @@ def phrase_clustering(p_graph, aff_mat, init_n_clusters, max_diameter):
         print p_graph.nodes
         return d_clusters
 
+    start = time.time()
     p_labels = SpectralClustering(n_clusters=init_n_clusters, affinity='precomputed', n_jobs=-1).fit_predict(aff_mat)
     cand_clusters = dict()
     nodes = list(p_graph.nodes)
@@ -455,6 +456,7 @@ def phrase_clustering(p_graph, aff_mat, init_n_clusters, max_diameter):
             cand_clusters[label] = [nodes[id]]
         else:
             cand_clusters[label].append(nodes[id])
+    print '[DBG]: SpectralClustering cost %s secs for n = %s' % (time.time()-start, init_n_clusters)
 
     # keep doing clustering for each cluster if this cluster's diameter is greater than max_diameter
     for c in cand_clusters.keys():
@@ -468,8 +470,9 @@ def phrase_clustering(p_graph, aff_mat, init_n_clusters, max_diameter):
             if len(sub_graph_comp.nodes) <= 0:
                 continue
             sub_graph_aff_mat = build_aff_mat(sub_graph_comp)
-            print '[DBG]: recursive phrase_clustering...'
-            d_c_clusters = phrase_clustering(sub_graph_comp, sub_graph_aff_mat, 2, max_diameter)
+            n_clusters = pred_cluster_size(sub_graph_comp, MAX_DIAMETER)
+            print '[DBG]: recursive phrase_clustering with n = %s' % n_clusters
+            d_c_clusters = phrase_clustering(sub_graph_comp, sub_graph_aff_mat, n_clusters, max_diameter)
             d_clusters = d_clusters.copy()
             d_clusters.update(d_c_clusters)
 
@@ -502,13 +505,15 @@ def recursive_bi_spectral_clustering(l_phrase_pairs):
             continue
         # we use the first phrase as the key of a cluster
         aff_mat = build_aff_mat(comp_graph)
-        comp_graph_avg_deg = math.floor(sum(dict(comp_graph.degree()).values())/comp_graph.number_of_nodes())
-        pred_c_size = 1
-        for i in range(MAX_DIAMETER):
-            pred_c_size += math.pow(comp_graph_avg_deg, i+1)
-        #pred_c_size = 1 + comp_graph_avg_deg + math.pow(comp_graph_avg_deg, 2) + math.pow(comp_graph_avg_deg, 3)
-        #n_init_clusters = int(math.ceil(comp_graph.number_of_nodes()/float(pred_c_size)))
-        n_init_clusters = 2
+        # comp_graph_avg_deg = math.floor(sum(dict(comp_graph.degree()).values())/comp_graph.number_of_nodes())
+        # pred_c_size = 1
+        # for i in range(MAX_DIAMETER):
+        #     pred_c_size += math.pow(comp_graph_avg_deg, i+1)
+        # pred_c_size = 1 + comp_graph_avg_deg + math.pow(comp_graph_avg_deg, 2) + math.pow(comp_graph_avg_deg, 3)
+        # n_init_clusters = int(math.ceil(comp_graph.number_of_nodes()/float(pred_c_size)))
+        # n_init_clusters = 2
+        n_init_clusters  = pred_cluster_size(comp_graph, MAX_DIAMETER)
+        print '[DBG]: initial phrase_clustering with n = %s' % n_init_clusters
         d_ret_clusters = phrase_clustering(comp_graph, aff_mat, n_init_clusters, MAX_DIAMETER)
         d_final_clusters = d_final_clusters.copy()
         d_final_clusters.update(d_ret_clusters)
@@ -566,7 +571,4 @@ def main(folder):
     dump_rbsc_clusters(d_clusters)
     print '[INF]: recursive bi-spectral-clustering dump is done!'
 
-
-# We found that the same phrase in the same sentence and same location has different arcs
-# This program saves phrases each arc from each cycle
-main('20news50short10_nasari_40_rmswcbwexpws_w3-3')
+main('20news50short10_nasari_30_rmswcbwexpws_w3-3')

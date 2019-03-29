@@ -29,20 +29,20 @@ import numpy
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.75
-WORD_SIM_THRESHOLD_NASARI = 0.50
-WORD_SIM_THRESHOLD_NASARI_N = 0.50
+WORD_SIM_THRESHOLD_NASARI = 0.55
+WORD_SIM_THRESHOLD_NASARI_N = 0.55
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
-MULTI_WS_SERV = False
+MULTI_WS_SERV = True
 MULTI_WS_SERV_MOD = 4
 RAND_SEED = 0
 # the other option is 'adw'
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
 #WORD_SIM_MODE = 'adw_tag'
-DB_CONN_STR = '/home/{0}/workspace/data/20news50short10.db'.format(os.environ['USER'])
+DB_CONN_STR = '/home/{0}/workspace/data/leefixsw.db'.format(os.environ['USER'])
 # used for lee vs leebg
 BGDB_CONN_STR = '/home/{0}/workspace/data/leebgfixsw.db'.format(os.environ['USER'])
 # used for Li65 sentence comparison
@@ -59,7 +59,7 @@ LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_sw.db'.format(os.enviro
 # wo = weighted overlap simialrity algorithm
 # scyc = use simple cycles instead of min cycle basis
 # test = only for test use
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/20news50short10_nasari_50_rmswcbwexpwsscyc_makeup_w3-3/'.format(os.environ['USER'])
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/li65_nasari_55_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -76,18 +76,18 @@ CYC_SIG_PARAM_4 = 20.0
 MAX_PROC = multiprocessing.cpu_count()
 PROC_BATCH_SIZE = multiprocessing.cpu_count()
 # use simple cycles instead of min cycle basis
-SIMPLE_CYCLES = True
+SIMPLE_CYCLES = False
 # swtich for lee and 20news
-LEE = True
+LEE = False
 # switch for lee vs leebg
 LEE_VS_LEEBG = False
 # switch for Li65
-LI65 = False
+LI65 = True
 # swthich for msr
 MSR = False
 MSR_SENT_PAIR_FILE = '/home/{0}/workspace/data/msr/msr_sim.txt'.format(os.environ['USER'])
 
-SAVE_CYCLES = True
+SAVE_CYCLES = False
 
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 
@@ -587,7 +587,7 @@ def sent_pair_sim(sent_treestr_1, sent_treestr_2):
 
 def sim_procs_cool_down(l_sim_proc):
     #print "[DBG]: start a cool-down."
-    while(len(l_sim_proc) != 0):
+    while(len(l_sim_proc) >= MAX_PROC):
         #print "[DBG]: sim_procs_cool_down:" + str(len(l_sim_proc))
         for proc in l_sim_proc:
             if proc.pid != os.getpid():
@@ -595,6 +595,7 @@ def sim_procs_cool_down(l_sim_proc):
             if not proc.is_alive():
                 #print "[DBG]: " + str(proc.pid) + " is removed."
                 l_sim_proc.remove(proc)
+    return len(l_sim_proc)
     #print "[DBG]: done a cool-down."
 
 def count_cycles_and_record(doc_1, doc_2, cycle_count):
@@ -759,16 +760,20 @@ def validate_doc_trees(doc1_tree, doc2_tree):
 
 # this function compute the text similarity between two users given a text data within a specified period for each user.
 def text_sim(db_cur):
-    # db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
-    db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = 'talk.politics.mideast/77290' OR doc_id = 'talk.politics.mideast/77256'")
+    db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
+    #db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = 'talk.politics.mideast/77290' OR doc_id = 'talk.politics.mideast/77256'")
     rows = db_cur.fetchall()
     total_doc_pair_count = (len(rows)*(len(rows)-1))/2
     print "[INF]: Total doc-pairs = %s" % total_doc_pair_count 
     sim_procs = []
     proc_id = 0
     proc_batch = 0
+    done_proc_count = 0
     for i, doc1 in enumerate(rows):
         for j, doc2 in enumerate(rows):
+            if os.path.exists(OUT_CYCLE_FILE_PATH + "%s#%s.json" % (doc1[0].replace('/','_'), doc2[0].replace('/','_'))):
+                print "[%s-%s]%s#%s.json already exists." % (i, j, doc1[0].replace('/','_'), doc2[0].replace('/','_'))
+                continue
             if i<j:
                 valid_doc1, valid_doc2 = validate_doc_trees(doc1[1], doc2[1])
                 print "[DBG]: doc pairs = %s : %s" % (doc1[0], doc2[0])
@@ -783,13 +788,17 @@ def text_sim(db_cur):
                     #print "[DBG]: sim array ="
                 if len(sim_procs) >= MAX_PROC:
                     # print "[DBG]: cool down 1"
-                    sim_procs_cool_down(sim_procs)
-                    print "[INF]: {0:.0%} done!".format(float(proc_batch*PROC_BATCH_SIZE) / float(total_doc_pair_count))
+                    current_proc_count = len(sim_procs)
+                    after_cool_down_proc_count = sim_procs_cool_down(sim_procs)
+                    done_proc_count += (current_proc_count - after_cool_down_proc_count)
+                    print "[INF]: {0:.0%} done!".format(float(done_proc_count) / float(total_doc_pair_count))
                 # print "[DBG]: sim procs:" + str(len(sim_procs))
             # p.join()
         # print "[DBG]: cool down 2"
-    sim_procs_cool_down(sim_procs)
-    print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count)/float(total_doc_pair_count))
+    current_proc_count = len(sim_procs)
+    after_cool_down_proc_count = sim_procs_cool_down(sim_procs)
+    done_proc_count += (current_proc_count - after_cool_down_proc_count)
+    print "[INF]: {0:.0%} done!".format(float(done_proc_count)/float(total_doc_pair_count))
 
 
     # print "[DBG]: total task: " + str(len(l_sent_treestr_1)*len(l_sent_treestr_2))

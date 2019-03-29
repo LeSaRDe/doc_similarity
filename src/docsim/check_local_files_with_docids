@@ -4,8 +4,8 @@ conn = sqlite3.connect("/home/fcmeng/workspace/data/20news50short10.db")
 cur = conn.cursor()
 docs = cur.execute('SELECT doc_id from docs order by doc_id').fetchall()
 
-files=os.listdir("/home/fcmeng/workspace/data/20news50short10_nasari_40_rmswcbwexpws_w3-3_apv_vec/")
+files=os.listdir("/home/fcmeng/workspace/data/20news50short10_nasari_40_rmswcbwexpws_w3-3_expps_apv_vec/")
 
 for doc in docs:
     if doc[0].replace("/", "_")+'.json' not in files:
-        print doc
+        print doc,","

@@ -153,4 +153,4 @@ def main(words_file):
 if __name__ == "__main__":
     # main('lee_test_words.txt')
     # main('leefixsw_nasari_40_rmswcbwexpws_w3-3_words.txt')
-    main('20news50short10_nasari_40_rmswcbwexpws_w3-3_words.txt')
+    main('20news50short10_nasari_30_rmswcbwexpws_w3-3_words.txt')

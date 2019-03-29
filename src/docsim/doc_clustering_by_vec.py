@@ -23,7 +23,7 @@ def main(data_name):
     doc_id_index, id_to_doc = doc_clustering_utils.get_doc_ids(cur=cur, dataset_flag=dataset_flag)
     org_doc_labels = doc_clustering_utils.label_org_doc_ids(doc_id_index, doc_categories, TOTAL_DOC)
 
-    outfile = open('%s/workspace/data/%s_doc_cluster_nasari_40_rmswcbwexpws_w3-3_apv.txt' % (os.environ['HOME'], dataset), 'w+')
+    outfile = open('%s/workspace/data/%s_doc_cluster_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
     outfile.write(str(doc_id_index))
 
     aff_matrix = None
@@ -34,8 +34,14 @@ def main(data_name):
         if run_clustering == 'spectral' or run_clustering == 'all':
             if aff_matrix is None:
                 full_doc_pair_list = doc_clustering_utils.get_doc_sim_from_db(col=col_name, cur=cur, dataset_flag=dataset_flag)
-                # std_value, mean_value, min_value, max_value = doc_clustering_utils.cal_std_mean(full_doc_pair_list)
-                aff_matrix = doc_clustering_utils.build_normed_aff_matrix(full_doc_pair_list, doc_id_index, TOTAL_DOC)
+                if 'doc2vec' in col_name or 'pca' in col_name:
+                    # std_value, mean_value, min_value, max_value = doc_clustering_utils.cal_std_mean(full_doc_pair_list)
+                    aff_matrix = doc_clustering_utils.build_normed_aff_matrix(full_dicts=full_doc_pair_list,
+                                                                              doc_ids=doc_id_index,size=TOTAL_DOC,
+                                                                              minv=-1, maxv=1)
+                else:
+                    aff_matrix = doc_clustering_utils.build_normed_aff_matrix(full_dicts=full_doc_pair_list,
+                                                                              doc_ids=doc_id_index, size=TOTAL_DOC)
             if aff_matrix[0][0] != 0:
                 raise Exception("Aff matrix [i][i] not equal to 0!!")
             sc_labels = doc_clustering_utils.spectral_clustering(aff_matrix, n_size)
@@ -50,4 +56,5 @@ def main(data_name):
             doc_clustering_utils.cluster_perf_evaluation(org_doc_labels, sc_labels, outfile)
 
 
-main("20news50short10_nasari_40_rmswcbwexpws_w3-3_apv")
+main("20news50short10_nasari_30_rmswcbwexpws_w3-3_top5ws50_apv")
+# main("20news50short10_nasari_doc2vec")

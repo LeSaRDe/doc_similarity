@@ -106,6 +106,8 @@ def aff_plus_degree(matrix, size):
 def spectral_clustering(mat, n_size):
     sc = SpectralClustering(n_clusters=n_size, eigen_solver=None, random_state=None, n_init=10, affinity='precomputed',
                             assign_labels='kmeans', n_jobs=-1).fit_predict(mat)
+    # sc = SpectralClustering(n_clusters=n_size, eigen_solver=None, random_state=None, n_init=10, affinity='rbf',
+    #                         assign_labels='kmeans', n_jobs=-1).fit_predict(mat)
     return sc
 
 

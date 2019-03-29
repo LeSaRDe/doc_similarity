@@ -203,4 +203,5 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('leefixsw_nasari_50_rmswcbwexpwsscyc_w3-3')
+main('leefixsw_nasari_65_rmswcbwexpws_w3-3')
+# main('leefixsw_nasari_doc2vec')

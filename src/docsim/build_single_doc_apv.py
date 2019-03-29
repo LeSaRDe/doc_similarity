@@ -81,7 +81,7 @@ def calculate_phrase_vs_cluster_sim(this_phrase, this_phrase_attrs, c_nodes, wor
         p_vs_p_sim = phrase_phrase_sim(this_phrase=this_phrase, c_phrase=each_p, word_pair_sims=word_pair_sims)
         if p_vs_p_sim > 0:
             weight = cal_weight(this_phrase_attrs, c_node_attrs)
-            this_p_c_sim_list.append(weight * p_vs_p_sim)
+            this_p_c_sim_list.append(weight * math.exp(p_vs_p_sim*2))
     # return SUM of phrase pair sims
     # TODO: change the return if not using SUM as the phrase-vs-cluster sim
     return sum(this_p_c_sim_list)
@@ -141,7 +141,8 @@ def collect_all_phrases(target_doc_id, compare_sim_docs, json_files_path):
     return all_phrases
 
 
-def build_single_doc_apv(phrase_cluster_by_clusterid, word_pair_sims, target_doc_id, compare_sim_docs, json_files_path, in_cur):
+def build_single_doc_apv(phrase_cluster_by_clusterid, word_pair_sims, target_doc_id, compare_sim_docs,
+                         json_files_path, out_files_path, in_cur):
     start = time.time()
     global cur
     cur = in_cur
@@ -162,7 +163,7 @@ def build_single_doc_apv(phrase_cluster_by_clusterid, word_pair_sims, target_doc
     for each_c_key, each_sim_list in apv_vec.items():
         apv_vec[each_c_key] = sum(each_sim_list)
 
-    with open(json_files_path+'_apv_vec/'+target_doc_id.replace('/', '_')+'.json', 'w') as outfile:
+    with open(out_files_path+target_doc_id.replace('/', '_')+'.json', 'w') as outfile:
         json.dump(apv_vec, outfile, indent=4)
     outfile.close()
 
