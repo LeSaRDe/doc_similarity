@@ -369,8 +369,6 @@ def create_phrase_graph(l_phrase_pairs):
         # a new edge is added to the graph as well. the weight of this edge
         # is the sim between the two phrases.
         p1_in_graph = get_phrase_in_graph(p_graph, p1[0])
-        p2_in_graph = get_phrase_in_graph(p_graph, p2[0])
-
         if p1_in_graph is None:
             p1_in_graph = '#'.join(p1[0])
             # p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
@@ -383,6 +381,7 @@ def create_phrase_graph(l_phrase_pairs):
                 p_graph.node[p1_in_graph]['cnt'] += 1
                 p_graph.node[p1_in_graph]['loc'][p1[1]].append(p1[2])
 
+        p2_in_graph = get_phrase_in_graph(p_graph, p2[0])
         if p2_in_graph is None:
             p2_in_graph = '#'.join(p2[0])
             # p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])

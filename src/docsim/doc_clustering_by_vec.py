@@ -10,7 +10,8 @@ def main(data_name):
     data_path = '%s/workspace/data/' % os.environ['HOME']
     col_name = data_name[data_name.find('_') + 1:]
     TOTAL_DOC = doc_clustering_utils.get_total_doc_size(dataset)
-    dataset_flag = '20news50short10-250'
+    # dataset_flag = '20news50short10-250'
+    dataset_flag = '20news50short10'
 
     global conn, cur
     conn = sqlite3.connect("%s%s.db" % (data_path, dataset))
@@ -18,12 +19,20 @@ def main(data_name):
 
     run_clustering = 'all'
 
-    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.space': 1, 'rec.motorcycles': 2, 'rec.sport.hockey': 3,
-                      'talk.politics.mideast': 4}
+
+    # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.space': 1, 'rec.motorcycles': 2, 'rec.sport.hockey': 3,
+    #                   'talk.politics.mideast': 4}
+    # doc_categories = {'talk.politics.guns': 0, 'alt.atheism': 1, 'misc.forsale': 2, 'sci.med': 3,
+    #                   'sci.electronics': 4}
+    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
+    'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
+    'talk.politics.mideast': 9}
+
+
     doc_id_index, id_to_doc = doc_clustering_utils.get_doc_ids(cur=cur, dataset_flag=dataset_flag)
     org_doc_labels = doc_clustering_utils.label_org_doc_ids(doc_id_index, doc_categories, TOTAL_DOC)
 
-    outfile = open('%s/workspace/data/%s_doc_cluster_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
+    outfile = open('%s/workspace/data/%s_doc_cluster_full_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
     outfile.write(str(doc_id_index))
 
     aff_matrix = None
@@ -56,5 +65,5 @@ def main(data_name):
             doc_clustering_utils.cluster_perf_evaluation(org_doc_labels, sc_labels, outfile)
 
 
-main("20news50short10_nasari_30_rmswcbwexpws_w3-3_top5ws50_apv")
+main("20news50short10_nasari_30_rmswcbwexpws_w3-3_doc_pv")
 # main("20news50short10_nasari_doc2vec")

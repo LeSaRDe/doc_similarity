@@ -89,8 +89,8 @@ def calculate_phrase_vs_cluster_sim(this_phrase, this_phrase_attrs, c_nodes, wor
 
 def find_key_in_dict(p_list, dict_keys_to_search):
     if len(p_list) == 1:
-        if p_list[0] in dict_keys_to_search:
-            return p_list[0]
+        if (p_list[0] + '#' + p_list[0]) in dict_keys_to_search:
+            return p_list[0] + '#' + p_list[0]
     elif len(p_list) == 2:
         if (p_list[0] + "#" + p_list[1]) in dict_keys_to_search:
             return p_list[0] + "#" + p_list[1]
@@ -99,6 +99,47 @@ def find_key_in_dict(p_list, dict_keys_to_search):
     else:
         raise Exception("[ERR]Phrase list length error!")
     return None
+
+
+# old version for phrase clustering, one loc - one arc
+# def collect_all_phrases(target_doc_id, compare_sim_docs, json_files_path):
+#     all_phrases = dict()
+#     for each_compare in compare_sim_docs:
+#         with open(json_files_path + '/' + each_compare[0].replace('/', '_') + '.json', 'r') as infile:
+#             sent_pair_cycles = json.load(infile)['sentence_pair']
+#         infile.close()
+#
+#         if target_doc_id == each_compare[0].split('#')[0]:
+#             doc_key = 's1:'
+#             sent_idx_loc = 0
+#         elif target_doc_id == each_compare[0].split('#')[1]:
+#             doc_key = 's2:'
+#             sent_idx_loc = 1
+#         else:
+#             raise Exception("doc name [%s] not in the file name!" % target_doc_id)
+#         for sent_pair_key, cycles in sent_pair_cycles.items():
+#             sent_idx = sent_pair_key.split('-')[sent_idx_loc]
+#             for each_c in cycles['cycles']:
+#                 this_phrase, this_arc, this_sent_phrase_loc, that_arc = parse_cycle(each_cycle=each_c, doc_key=doc_key)
+#                 # if sent_idx+"-"+this_phrase_locs not in all_phrases.keys():
+#                 #     all_phrases[sent_idx+"-"+this_phrase_locs] = (this_phrase, this_arc)
+#                 # else:
+#                 #     print "%s: %s already exists" % (sent_idx+"-"+this_phrase_locs, this_phrase)
+#                 this_phrase_loc = sent_idx+"-"+this_sent_phrase_loc
+#                 this_phrase_str = find_key_in_dict(this_phrase, all_phrases.keys())
+#
+#                 if this_phrase_str:
+#                     if this_phrase_loc in all_phrases[this_phrase_str].keys():
+#                         # if all_phrases[this_phrase_str][this_phrase_loc]['arc'] != this_arc:
+#                         #     raise Exception("[ERR - %s]The same phrase %s at the same location doesn't have the same arc!!" % (target_doc_id, this_phrase_str))
+#                         #TODO: The same phrase at the same location doesn't have the same arc, need to redo the clustering and redo this later
+#                         all_phrases[this_phrase_str][this_phrase_loc]['cnt'] += 1
+#                     else:
+#                         all_phrases[this_phrase_str][this_phrase_loc] = {'cnt': 1, 'arc': this_arc}
+#                 else:
+#                     this_phrase_str = '#'.join(this_phrase)
+#                     all_phrases[this_phrase_str] = {this_phrase_loc: {'cnt': 1, 'arc': this_arc}}
+#     return all_phrases
 
 
 def collect_all_phrases(target_doc_id, compare_sim_docs, json_files_path):
@@ -127,17 +168,19 @@ def collect_all_phrases(target_doc_id, compare_sim_docs, json_files_path):
                 this_phrase_loc = sent_idx+"-"+this_sent_phrase_loc
                 this_phrase_str = find_key_in_dict(this_phrase, all_phrases.keys())
 
-                if this_phrase_str:
+                if this_phrase_str is not None:
                     if this_phrase_loc in all_phrases[this_phrase_str].keys():
-                        # if all_phrases[this_phrase_str][this_phrase_loc]['arc'] != this_arc:
-                        #     raise Exception("[ERR - %s]The same phrase %s at the same location doesn't have the same arc!!" % (target_doc_id, this_phrase_str))
-                        #TODO: The same phrase at the same location doesn't have the same arc, need to redo the clustering and redo this later
-                        all_phrases[this_phrase_str][this_phrase_loc]['cnt'] += 1
+                        all_phrases[this_phrase_str][this_phrase_loc].append(this_arc)
                     else:
-                        all_phrases[this_phrase_str][this_phrase_loc] = {'cnt': 1, 'arc': this_arc}
+                        all_phrases[this_phrase_str][this_phrase_loc] = [this_arc]
                 else:
-                    this_phrase_str = '#'.join(this_phrase)
-                    all_phrases[this_phrase_str] = {this_phrase_loc: {'cnt': 1, 'arc': this_arc}}
+                    if len(this_phrase) == 1:
+                        this_phrase_str = this_phrase[0] + '#' + this_phrase[0]
+                    elif len(this_phrase) == 2:
+                        this_phrase_str = '#'.join(this_phrase)
+                    else:
+                        pass
+                    all_phrases[this_phrase_str] = {this_phrase_loc: [this_arc]}
     return all_phrases
 
 

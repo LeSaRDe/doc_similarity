@@ -389,7 +389,7 @@ def create_phrase_graph(l_phrase_pairs):
                 p_graph.node[p2_in_graph]['loc'].append(p2[1])
                 p_graph.node[p2_in_graph]['arc'].append(p2[2])
 
-        if not p_graph.has_edge(p1_in_graph, p2_in_graph):
+        if not p_graph.has_edge(p1_in_graph, p2_in_graph) and p1_in_graph != p2_in_graph:
             p_sim = get_phrase_sim(p1[0], p2[0])
             p_graph.add_edge(p1_in_graph, p2_in_graph, weight=p_sim)
 

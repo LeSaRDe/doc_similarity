@@ -33,16 +33,23 @@ def main(folder):
     #doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
     #                  'rec.motorcycles': 4, 'misc.forsale': 5,'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
     #                  'talk.politics.mideast': 9}
-    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.space': 1, 'rec.motorcycles': 2, 'rec.sport.hockey': 3,
-                      'talk.politics.mideast': 4}
+    # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.space': 1, 'rec.motorcycles': 2, 'rec.sport.hockey': 3,
+    #                   'talk.politics.mideast': 4}
+    # doc_categories = {'talk.politics.guns': 0, 'alt.atheism': 1, 'misc.forsale': 2, 'sci.med': 3,
+    #                   'sci.electronics': 4}
+    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
+                      'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7,
+                      'rec.sport.hockey': 8,
+                      'talk.politics.mideast': 9}
 
     run_clustering = 'all'
-    dataset_flag = '20news50short10-250'
+    # dataset_flag = '20news50short10-250'
+    dataset_flag = '20news50short10'
 
     doc_id_index, id_to_doc = doc_clustering_utils.get_doc_ids(cur=cur, dataset_flag=dataset_flag)
     org_doc_labels = doc_clustering_utils.label_org_doc_ids(doc_id_index, doc_categories, TOTAL_DOC)
 
-    outfile = open('%s/workspace/data/%s_50_doc_cluster_res.txt' % (os.environ['HOME'], dataset), 'w+')
+    outfile = open('%s/workspace/data/%s_dsctp30_doc_cluster_full.txt' % (os.environ['HOME'], dataset), 'w+')
     outfile.write(str(doc_id_index))
 
     aff_matrix = None
@@ -173,4 +180,4 @@ def main(folder):
 
 # main('leefixsw', c_size)
 #main("20news50short10_nasari_40_rmswcbwexpws_w3-3")
-main("20news50short10_nasari_50_rmswcbwexpws_w3-3")
+main("20news50short10_nasari_30_rmswcbwexpws_w3-3")
