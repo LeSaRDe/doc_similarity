@@ -8,7 +8,7 @@ import multiprocessing
 
 PHRASE_CLUSTER_METHOD = 'rbsc'
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
-WORD_SIM_THRESHOLD = 0.5
+WORD_SIM_THRESHOLD = 0.3
 
 
 def get_doc_sim_from_db(col):
@@ -40,7 +40,7 @@ def get_doc_ids():
 def get_word_pair_sims():
     pairwise_sims = dict()
     all_sims = cur.execute('SELECT * from words_sim WHERE sim >= %s order by word_pair_idx' % WORD_SIM_THRESHOLD).fetchall()
-    print "Sim >= 0.3, total word pairs=%s " % len(all_sims)
+    print "Sim >= %s, total word pairs=%s " % (WORD_SIM_THRESHOLD,len(all_sims))
     all_words_idx = cur.execute('SELECT * from words_idx').fetchall()
     all_idx_word = dict()
     for word, idx in all_words_idx:
@@ -77,12 +77,12 @@ def build_apv_matrix(phrase_cluster_by_clusterid, folder):
     return apv_df
 
 
-def proc_cool_down(apv_processes):
+def proc_cool_down(apv_processes, max_proc):
     # while len(apv_processes) >= multiprocessing.cpu_count():
-    while len(apv_processes) >= 10:
+    while len(apv_processes) >= max_proc:
         for proc in apv_processes:
             if proc.pid != os.getpid():
-                proc.join(1)
+                proc.join(0.01)
             if not proc.is_alive():
                 apv_processes.remove(proc)
 
@@ -112,7 +112,8 @@ def build_apv_matrix_parallel(phrase_cluster_by_clusterid, folder):
                                           folder, out_apv_files_path, cur))
         apv_processes.append(p)
         p.start()
-        proc_cool_down(apv_processes)
+        proc_cool_down(apv_processes, 10)
+    proc_cool_down(apv_processes, 1)
 
 
 def find_top_sim_doc_pairs(doc_id):
@@ -131,7 +132,7 @@ def main(folder):
     data_path = '%s/workspace/data/' % os.environ['HOME']
     col_name = folder[folder.find('_') + 1:]
 
-    out_apv_files_path = data_path+folder+'_top5ws50_apv_vec/'
+    out_apv_files_path = data_path+folder+'_top5ws30_apv_vec/'
 
     global conn, cur
     conn = sqlite3.connect("%s%s.db" % (data_path, dataset))
@@ -157,14 +158,16 @@ def main(folder):
     # <====
 
     global full_doc_categories, doc_categories, TOP_SIM_DOCS
-    full_doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
-                     'rec.motorcycles': 4, 'misc.forsale': 5,'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
-                     'talk.politics.mideast': 9}
+    # full_doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
+    #                  'rec.motorcycles': 4, 'misc.forsale': 5,'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
+    #                  'talk.politics.mideast': 9}
+    full_doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
     # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.med': 1, 'rec.motorcycles': 2, 'rec.sport.hockey': 3,
     #                   'talk.politics.mideast': 4}
-    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
-                      'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7,
-                      'rec.sport.hockey': 8, 'talk.politics.mideast': 9}
+    # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
+    #                   'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7,
+    #                   'rec.sport.hockey': 8, 'talk.politics.mideast': 9}
+    doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
     # if TOP_SIM_DOCS is set to -1, then all documents are taken into account.
     # TOP_SIM_DOCS = -1
     TOP_SIM_DOCS = 5
@@ -180,4 +183,4 @@ def main(folder):
 
 if __name__ == '__main__':
     # must have the phrase cluster saved in json files
-    main("20news50short10_nasari_30_rmswcbwexpws_w3-3")
+    main("reuters_nasari_30_rmswcbwexpws_w3-3")

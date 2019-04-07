@@ -29,8 +29,8 @@ import numpy
 
 NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.75
-WORD_SIM_THRESHOLD_NASARI = 0.55
-WORD_SIM_THRESHOLD_NASARI_N = 0.55
+WORD_SIM_THRESHOLD_NASARI = 0.30
+WORD_SIM_THRESHOLD_NASARI_N = 0.30
 SEND_PORT_ADW = 8607
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -42,7 +42,7 @@ RAND_SEED = 0
 WORD_SIM_MODE = 'nasari'
 #WORD_SIM_MODE = 'adw'
 #WORD_SIM_MODE = 'adw_tag'
-DB_CONN_STR = '/home/{0}/workspace/data/leefixsw.db'.format(os.environ['USER'])
+DB_CONN_STR = '/home/{0}/workspace/data/reuters.db'.format(os.environ['USER'])
 # used for lee vs leebg
 BGDB_CONN_STR = '/home/{0}/workspace/data/leebgfixsw.db'.format(os.environ['USER'])
 # used for Li65 sentence comparison
@@ -59,7 +59,7 @@ LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_sw.db'.format(os.enviro
 # wo = weighted overlap simialrity algorithm
 # scyc = use simple cycles instead of min cycle basis
 # test = only for test use
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/li65_nasari_55_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/reuters_nasari_30_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -73,12 +73,14 @@ CYC_RBF = False
 #CYC_SIG_PARAM 3 and 4 are used by exp(- (w1-param3)^2 / param4)
 CYC_SIG_PARAM_3 = 1.0
 CYC_SIG_PARAM_4 = 20.0
-MAX_PROC = multiprocessing.cpu_count()
-PROC_BATCH_SIZE = multiprocessing.cpu_count()
+# MAX_PROC = multiprocessing.cpu_count()
+# PROC_BATCH_SIZE = multiprocessing.cpu_count()
+MAX_PROC = 10
+PROC_BATCH_SIZE = 10
 # use simple cycles instead of min cycle basis
 SIMPLE_CYCLES = False
-# swtich for lee and 20news
-LEE = False
+# swtich for lee and 20news and reuters
+LEE = True
 # switch for lee vs leebg
 LEE_VS_LEEBG = False
 # switch for Li65
@@ -87,7 +89,7 @@ LI65 = True
 MSR = False
 MSR_SENT_PAIR_FILE = '/home/{0}/workspace/data/msr/msr_sim.txt'.format(os.environ['USER'])
 
-SAVE_CYCLES = False
+SAVE_CYCLES = True
 
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 

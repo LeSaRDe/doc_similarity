@@ -1,0 +1,117 @@
+sudo pip install -U nltk
+import nltk
+nltk.download('punkt')
+% pip install sqlitebiter
+
+StanfordNLP server:
+1) Server failure detection
+    - How to know the server is donw?
+2) Server restart
+    - How to restart the server?
+Solution:
+    -The server is running multi-threads, it is able to auto-restart.
+3) Client response to the server failure
+    - How to know the server failed?
+    - How to know if the server failed because the client's request or other reasons?
+4) Server probe and reconnection
+    - What should the client do after the server failure and before the server become avaliable again?
+    - How to deal with the most recent failed request?
+    - How to reconnect and resume the work?
+Solution:
+    - Try catch the error of the failed request
+    - Discard the annotated results of the current document, instead, save the error message in the word_list column and deal with it later
+
+Step1: Create database and schema
+    Table1: Documents
+        CREATE TABLE docs (doc_id TEXT NOT NULL UNIQUE, pre_ner TEXT, word_list TEXT);
+        CREATE INDEX doc_idx ON docs (doc_id);
+        "pre_ner" is pre-cleaned txt file, composed with sentences and punctuations, in one line.
+        word_list is a dict of words of the doc, formatted as str(dict), use eval() to convert back to a dict
+
+    %%%%%%%%%%%%%OLD%%%%%%%%%%%%%%%%%
+    Table2: Words and counts
+        CREATE TABLE IF NOT EXISTS "all_words_count" (word TEXT, count INTEGER, in_nasari INTEGER);
+        CREATE INDEX word_idx ON all_words_count (word);
+        All words are lower case, not lemmatized.
+        If not in nasari, in_nasari=0, otherwise, =1
+    %%%%%%%%%%%%%OLD%%%%%%%%%%%%%%%%%
+
+    Table2: Doc pair sim
+        CREATE TABLE docs_sim
+        (doc_id_pair text primary key not null,
+         "nasari_30_rmsw_w3-2" real, ...);
+
+    Table3: Word list
+        CREATE TABLE IF NOT EXISTS words_idx(word text not null, idx int);
+        CREATE INDEX word_idx ON words_idx(word);
+
+    Table4: Word pair sim
+        CREATE TABLE IF NOT EXISTS words_sim(word_pair_idx int not null, sim real);
+        CREATE INDEX word_pair_idx ON words_sim(word_pair_idx);
+
+
+
+
+Step2: init_insert_all_docs_to_db.py
+Input: Raw text data files
+Output: Pre-cleaned txt, save in table docs(pre_ner), ready for NER
+
+%%%%%%%%%%%%%OLD%%%%%%%%%%%%%%%%%
+Step3: words_clean_and_ner.py
+Input: Pre-cleaned txt from step2
+Output: list of words for a document, save in table docs(word_list)
+Note: In case CoreNLP timeout on long txt, save error message in the db table
+
+Step3-1: words_clean_and_ner_for_special_cases.py
+Run this in case the error in Step3
+
+Step4: count_total_words.py
+Input: all words in the docs(word_list)
+Output: counted words, save in table all_words_count(word, count)
+
+Step5: mark_nonexist_NASARI.py
+Input: all words in the docs(word_list)
+Output: Mark the non-exist words in table all_words_count(in_nasari)
+
+Step6: cal_word_pair_sim.py
+Input: all words
+Output: Words pair-wise sim, save in table words_sim
+
+Step7: word_clustering.py
+%%%%%%%%%%%%%OLD%%%%%%%%%%%%%%%%%
+
+Step3: Annotation (by java program)
+Input: Pre-cleaned txt from step2
+Output: Tagged text txt, save in table docs(tagged_text); Parsed trees for all sentences, save in table docs(parse_trees)
+
+!!!Before Step4, MUST pre-create a new folder with the following format,
+<dataset_name>_nasari_<sim_threshold>_<rmsw_or_sw>_weight<alpha-beta>, e.g.,
+lee_nasari_30_rmsw_w3-2
+
+Step4: docsim_analysis.py
+Input: Parsed trees from step3
+Output: Doc pair-wise sim and a list of words (nodes in the cycles), save in individual files in a certain folder
+
+!!!Before Step5,Must have doc pair keys pre-installed in table docs_sim(doc_id_pair), and have a column added, named the same as the folder in step4 (without the dataset name)
+e.g.,
+ALTER TABLE docs_sim ADD COLUMN "nasari_30_rmsw_w3-2" real;
+
+Step5: read_sim_res_to_db.py
+Input: The folder name for all local files of step4
+Output: Read out the sim, and save in targeted col in table docs_sim
+
+Step6: read_words_res.py
+Input: The folder name for all local files of step4
+Output: A set of words for clustering, save in a .txt file
+
+Step7: word_pair_sim.py & insert_words_idx.py & idx_bit_translate.py
+Input: word list file from Step6
+Output: Create Table3, assign a number to each word and insert words into Table3;
+        Create Table4, insert all word pair wise key to Table4;
+        Calculate word pairwise sim, update Table4
+
+Step7-1: word_sim_correctness_test.py
+Check if the sim result in Step7 is correct
+
+Step8: word_clustering.py
+Input:

@@ -18,7 +18,9 @@ def get_total_doc_size(dataset):
         # TOTAL_DOC = 500
         # for 5 classes
         # return 250
-        return 500
+        return 150
+    elif dataset == 'reuters':
+        return 350
 
 
 def get_doc_ids(cur, dataset_flag):
@@ -31,9 +33,11 @@ def get_doc_ids(cur, dataset_flag):
         #                 and doc_id not like "%sci.electronics%"
         #                 order by doc_id''')
         cur.execute('''SELECT doc_id from docs
-                                where doc_id not like "%comp.sys.ibm.pc.hardware%"
+                                where doc_id not like "%talk.politics.guns%"
+                                and doc_id not like "%alt.atheism%"
                                 and doc_id not like "%sci.space%"
                                 and doc_id not like "%rec.motorcycles%"
+                                and doc_id not like "%sci.med%"
                                 and doc_id not like "%rec.sport.hockey%"
                                 and doc_id not like "%talk.politics.mideast%"
                                 order by doc_id''')
@@ -58,10 +62,12 @@ def get_doc_sim_from_db(col, cur, dataset_flag):
         #                 and doc_id_pair not like "%sci.electronics%"
         #                 order by doc_id_pair''')
         cur.execute('''SELECT doc_id_pair, "''' + col + '''" from docs_sim 
-                                where doc_id_pair not like "%comp.sys.ibm.pc.hardware%" 
-                                and doc_id_pair not like "%sci.space%" 
-                                and doc_id_pair not like "%rec.motorcycles%" 
-                                and doc_id_pair not like "%rec.sport.hockey%" 
+                                where doc_id_pair not like "%talk.politics.guns%"
+                                and doc_id_pair not like "%alt.atheism%"
+                                and doc_id_pair not like "%sci.space%"
+                                and doc_id_pair not like "%rec.motorcycles%"
+                                and doc_id_pair not like "%sci.med%"
+                                and doc_id_pair not like "%rec.sport.hockey%"
                                 and doc_id_pair not like "%talk.politics.mideast%"
                                 order by doc_id_pair''')
     else:
@@ -73,7 +79,10 @@ def get_doc_sim_from_db(col, cur, dataset_flag):
 def label_org_doc_ids(doc_ids, doc_categories, size):
     doc_labels = [-1] * size
     for doc_id, loc in doc_ids.items():
-        doc_labels[loc] = doc_categories[doc_id.split('/')[0]]
+        if "_" in doc_id:
+            doc_labels[loc] = doc_categories[doc_id.split('_')[0]]
+        else:
+            doc_labels[loc] = doc_categories[doc_id.split('/')[0]]
     if -1 in doc_labels:
         raise Exception("Org doc labels has -1!!")
     return doc_labels

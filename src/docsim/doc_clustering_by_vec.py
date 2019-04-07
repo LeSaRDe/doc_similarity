@@ -11,7 +11,8 @@ def main(data_name):
     col_name = data_name[data_name.find('_') + 1:]
     TOTAL_DOC = doc_clustering_utils.get_total_doc_size(dataset)
     # dataset_flag = '20news50short10-250'
-    dataset_flag = '20news50short10'
+    # dataset_flag = '20news50short10'
+    dataset_flag = 'reuters'
 
     global conn, cur
     conn = sqlite3.connect("%s%s.db" % (data_path, dataset))
@@ -24,21 +25,23 @@ def main(data_name):
     #                   'talk.politics.mideast': 4}
     # doc_categories = {'talk.politics.guns': 0, 'alt.atheism': 1, 'misc.forsale': 2, 'sci.med': 3,
     #                   'sci.electronics': 4}
-    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
-    'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
-    'talk.politics.mideast': 9}
-
+    # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
+    # 'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
+    # 'talk.politics.mideast': 9}
+    # doc_categories = {'talk.politics.guns': 0, 'alt.atheism': 1, 'talk.politics.mideast': 2}
+    # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.electronics': 1, 'misc.forsale': 2}
+    doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
 
     doc_id_index, id_to_doc = doc_clustering_utils.get_doc_ids(cur=cur, dataset_flag=dataset_flag)
     org_doc_labels = doc_clustering_utils.label_org_doc_ids(doc_id_index, doc_categories, TOTAL_DOC)
 
-    outfile = open('%s/workspace/data/%s_doc_cluster_full_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
+    outfile = open('%s/workspace/data/%s_doc_cluster_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
     outfile.write(str(doc_id_index))
 
     aff_matrix = None
     kmeans_matrix = None
 
-    for n_size in [5, 6, 7, 8]:
+    for n_size in [7, 8, 9, 10, 11]:
         # ==>spectral_clustering
         if run_clustering == 'spectral' or run_clustering == 'all':
             if aff_matrix is None:
@@ -65,5 +68,6 @@ def main(data_name):
             doc_clustering_utils.cluster_perf_evaluation(org_doc_labels, sc_labels, outfile)
 
 
-main("20news50short10_nasari_30_rmswcbwexpws_w3-3_doc_pv")
-# main("20news50short10_nasari_doc2vec")
+# main("20news50short10_nasari_30_rmswcbwexpws_w3-3_top5_apv_ws30")
+# main("20news50short10_doc2vec")
+main("reuters_nasari_doc2vec")

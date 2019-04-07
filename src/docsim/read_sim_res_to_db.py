@@ -27,6 +27,8 @@ def main(project_name, cycle):
         TOTAL_DOC = 1000
     elif dataset_name == "20news50short10":
         TOTAL_DOC = 500
+    elif dataset_name == "reuters":
+        TOTAL_DOC = 350
 
     print "[Dataset]: %s, [Col name]: %s, [Total docs]: %s" % (dataset_name, col_name, TOTAL_DOC)
 
@@ -71,7 +73,10 @@ def main(project_name, cycle):
                     key = "%s#%s" % (int(keys[0])+1,int(keys[1])+1)
                     key1 = "%s#%s" % (int(keys[1])+1,int(keys[0])+1)
                 else:
-                    key = file.replace('_', '/').replace('.json', '')
+                    if "reuters" in dataset_name:
+                        key = file.replace('.json', '')
+                    else:
+                        key = file.replace('_', '/').replace('.json', '')
                     key1 = None
                 if cycle == 'cycle':
                     sim = json.load(infile)['sim']
@@ -91,8 +96,8 @@ if __name__ == '__main__':
     # Step1: Create the table if the table not exist
     # CREATE TABLE docs_sim (doc_id_pair text primary key not null, "nasari_30_rmsw_w3-2" real);
     # Step2: Add column if the column doesn't exist
-    # ALTER TALBE docs_sim ADD <column_name> real;
+    # ALTER TABLE docs_sim ADD <column_name> real;
 
     # Give a folder name, the folder name must match the column name
     # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
-    main('leefixsw_nasari_65_rmswcbwexpws_w3-3', 'no cycle')
+    main('reuters_nasari_30_rmswcbwexpws_w3-3', 'cycle')

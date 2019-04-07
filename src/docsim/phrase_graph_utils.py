@@ -40,7 +40,7 @@ def get_word_sim_for_phrase(w1, w2):
     conn = sqlite3.connect("%s%s.db" % (data_path, data_set))
     db_cur = conn.cursor()
     if w1 is None or w2 is None:
-        raise Exception('[ERR]: iIvalid word input!')
+        raise Exception('[ERR]: Invalid word input!')
     db_cur.execute('SELECT idx from words_idx where word = ?', (w1,))
     w1_idx = db_cur.fetchone()[0]
     if w1_idx is None:
