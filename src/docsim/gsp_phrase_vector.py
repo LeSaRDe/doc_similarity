@@ -185,9 +185,9 @@ def find_top_sim_doc_pairs(doc_id):
     db_conn = sqlite3.connect(data_path + data_set + '.db')
     db_cur = db_conn.cursor()
     if TOP_SIM_DOCS == -1:
-        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%"''' % doc_id
+        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like doc_id_pair like "%s#%%" or doc_id_pair like "%%#%s" order by "%s"''' % (doc_id, doc_id, run_name)
     else:
-        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%" order by "%s" DESC limit %s''' % (doc_id, run_name, TOP_SIM_DOCS)
+        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%s#%%" or doc_id_pair like "%%#%s" order by "%s" DESC limit %s''' % (doc_id, doc_id, run_name, TOP_SIM_DOCS)
     db_cur.execute(query)
     rows = db_cur.fetchall()
     db_conn.close()
@@ -269,4 +269,4 @@ def main(doc_folder_name):
     if MULTI_PROC:
         proc_cool_down(l_doc_pv_procs, 1)
 
-main('20news50short10_nasari_30_rmswcbwexpws_w3-3')
+main('reuters_nasari_30_rmswcbwexpws_w3-3')

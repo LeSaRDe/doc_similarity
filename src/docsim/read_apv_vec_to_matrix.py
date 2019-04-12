@@ -8,7 +8,7 @@ def main(folder):
     dataset = folder[:folder.find('_')]
     data_path = '%s/workspace/data/' % os.environ['HOME']
 
-    with open(data_path + "20news50short10_nasari_30_rmswcbwexpws_w3-3_phrase_clusters_by_clusterid.json",'r') as infile:
+    with open(data_path + "reuters_nasari_30_rmswcbwexpws_w3-3_phrase_clusters_by_clusterid.json",'r') as infile:
         phrase_cluster_by_clusterid = json.load(infile)
     infile.close()
 
@@ -23,4 +23,4 @@ def main(folder):
     apv_df.to_csv(data_path + folder.replace('_apv_vec', '') + '_apv_matrix.csv', sep=',', index=False)
 
 
-main("20news50short10_nasari_30_rmswcbwexpws_w3-3_top5ws50_apv_vec")
+main("reuters_nasari_30_rmswcbwexpws_w3-3_top5ws30_apv_vec")

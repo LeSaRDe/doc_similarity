@@ -16,17 +16,14 @@ import ctypes
 MAX_THREADS = 10
 
 
-def update_sim(doc_key, sim, count, doc_key1=None, db_path=None):
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+def update_sim(doc_key, sim, count, doc_key1=None, db_cur=None):
     if doc_key1:
         cur.execute('UPDATE docs_sim set "%s"=? WHERE doc_id_pair=? or doc_id_pair=?' % col_name, (sim, doc_key, doc_key1))
     else:
         cur.execute('UPDATE docs_sim set "%s"=? WHERE doc_id_pair=?' % col_name, (sim,doc_key))
-    if count >= 10000 and count % 10000 == 0:
-        conn.commit()
-        print "%s/124750 done. Time: %s" % (count, time.time()-start)
-    conn.close()
+    # if count >= 1000 and count % 1000 == 0:
+    #     conn.commit()
+    #     print "%s/61075 done. Time: %s" % (count, time.time()-start)
 
 
 def compare_two_pvs(doc1_vec_list, doc2_vec_list, dis_mode):
@@ -70,8 +67,12 @@ def sim_thread_run(doc1_name, doc2_name, doc1_dict, doc2_dict, sim_array, index,
     doc1_uni_vec, doc2_uni_vec = get_uniform_vecs_for_two_docs(doc1_dict, doc2_dict)
     sim = compare_two_pvs(doc1_uni_vec, doc2_uni_vec, 'cosine')
     sim_array[index] = sim
-    update_sim(doc1_name.replace("_", "/").replace('.json', '').strip() + "#" + doc2_name.replace("_", "/").replace('.json', '').strip(), sim, index,
-               doc2_name.replace("_", "/").replace('.json', '').strip() + "#" + doc1_name.replace("_", "/").replace('.json', '').strip(), db_path)
+    if '20news50short' in dataset:
+        update_sim(doc1_name.replace("_", "/").replace('.json', '').strip() + "#" + doc2_name.replace("_", "/").replace('.json', '').strip(), sim, index,
+                doc2_name.replace("_", "/").replace('.json', '').strip() + "#" + doc1_name.replace("_", "/").replace('.json', '').strip(), db_path)
+    elif 'reuters' in dataset:
+        update_sim(doc1_name.replace('.json', '').strip() + "#" + doc2_name.replace('.json', '').strip(), sim, index,
+                   doc2_name.replace('.json', '').strip() + "#" + doc1_name.replace('.json', '').strip(), db_path)
 
 
 def thread_cool_down(l_threads, max_threads_threshold):
@@ -109,11 +110,16 @@ def main(folder):
 
             doc1_uni_vec, doc2_uni_vec = get_uniform_vecs_for_two_docs(doc1_vec, doc2_vec)
             sim = compare_two_pvs(doc1_uni_vec, doc2_uni_vec, 'cosine')
-            update_sim(
-                doc1.replace("_", "/").replace('.json', '').strip() + "#" + doc2.replace("_", "/").replace(
-                    '.json', '').strip(), sim, sim_array_idx,
-                doc2.replace("_", "/").replace('.json', '').strip() + "#" + doc1.replace("_", "/").replace(
-                    '.json', '').strip(), "%s%s.db" % (data_path, dataset))
+            if '20news50short' in dataset:
+                update_sim(
+                    doc1.replace("_", "/").replace('.json', '').strip() + "#" + doc2.replace("_", "/").replace(
+                        '.json', '').strip(), sim, sim_array_idx,
+                    doc2.replace("_", "/").replace('.json', '').strip() + "#" + doc1.replace("_", "/").replace(
+                        '.json', '').strip(), cur)
+            elif 'reuters' in dataset:
+                update_sim(
+                    doc1.replace('.json', '').strip() + "#" + doc2.replace('.json', '').strip(), sim, sim_array_idx,
+                    doc2.replace('.json', '').strip() + "#" + doc1.replace('.json', '').strip(), cur)
 
             # TODO
             # fix commit issue for multithreading
@@ -128,6 +134,9 @@ def main(folder):
 
             # print "%s - %s: %s" % (doc1, doc2, sim)
             sim_array_idx += 1
+            if sim_array_idx >= 1000 and sim_array_idx % 1000 == 0:
+                conn.commit()
+                print "%s/%s done. Time: %s" % (sim_array_idx, size_all_files * (size_all_files - 1) / 2, time.time() - start)
 
     # thread_done_cnt += thread_cool_down(l_threads, 1)
     conn.commit()
@@ -135,4 +144,4 @@ def main(folder):
     conn.close()
 
 
-main("20news50short10_nasari_30_rmswcbwexpws_w3-3_doc_pv")
+main("reuters_nasari_30_rmswcbwexpws_w3-3_doc_pv")

@@ -40,11 +40,22 @@ def find_word_pair_sim(w1, w2, word_pair_sims):
             return 0.0
 
 
+# def cal_weight(this_phrase_attrs, c_node_attrs):
+#     w = 0.0
+#     that_arc = float(sum(c_node_attrs['arc']))/len(c_node_attrs['arc'])
+#     for each_attr in this_phrase_attrs.values():
+#         w = w + each_attr['cnt'] * math.exp(3.0 / (math.pow(each_attr['arc'], 3) + math.pow(that_arc, 3)))
+#     return w
+
 def cal_weight(this_phrase_attrs, c_node_attrs):
     w = 0.0
-    that_arc = float(sum(c_node_attrs['arc']))/len(c_node_attrs['arc'])
-    for each_attr in this_phrase_attrs.values():
-        w = w + each_attr['cnt'] * math.exp(3.0 / (math.pow(each_attr['arc'], 3) + math.pow(that_arc, 3)))
+    that_arc = 0.0
+    for l_arcs in c_node_attrs['loc'].values():
+        that_arc += sum(l_arcs)
+    that_arc = that_arc / c_node_attrs['cnt']
+    for l_arcs in this_phrase_attrs.values():
+        for this_arc in l_arcs:
+            w += math.exp(3.0 / (math.pow(this_arc, 3) + math.pow(that_arc, 3)))
     return w
 
 
@@ -75,8 +86,8 @@ def phrase_phrase_sim(this_phrase, c_phrase, word_pair_sims):
 def calculate_phrase_vs_cluster_sim(this_phrase, this_phrase_attrs, c_nodes, word_pair_sims):
     this_p_c_sim_list = []
     for c_node_str, c_node_attrs in c_nodes:
-        if int(c_node_attrs['cnt']) != len(c_node_attrs['arc']):
-            raise Exception('[ERR]Node %s cnt %s doesnt match arc length %s' % (c_node_str, c_node_attrs['cnt'], c_node_attrs['arc']))
+        # if int(c_node_attrs['cnt']) != len(c_node_attrs['arc']):
+        #     raise Exception('[ERR]Node %s cnt %s doesnt match arc length %s' % (c_node_str, c_node_attrs['cnt'], c_node_attrs['arc']))
         each_p = c_node_str.split('#')
         p_vs_p_sim = phrase_phrase_sim(this_phrase=this_phrase, c_phrase=each_p, word_pair_sims=word_pair_sims)
         if p_vs_p_sim > 0:
@@ -142,6 +153,16 @@ def find_key_in_dict(p_list, dict_keys_to_search):
 #     return all_phrases
 
 
+# all phrases data structure:
+# {'word1#word2' :
+#       {'sent_id1-word_loc1-[word_loc2]' :
+#           [arc1, arc2, ...]
+#        'sent_id2-word_loc1-[word_loc2]' :
+#           [arc1, arc2, ...]
+#       }
+#  '...' :
+#       ...
+# }
 def collect_all_phrases(target_doc_id, compare_sim_docs, json_files_path):
     all_phrases = dict()
     for each_compare in compare_sim_docs:

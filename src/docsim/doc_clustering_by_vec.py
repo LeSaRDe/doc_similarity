@@ -68,6 +68,6 @@ def main(data_name):
             doc_clustering_utils.cluster_perf_evaluation(org_doc_labels, sc_labels, outfile)
 
 
-# main("20news50short10_nasari_30_rmswcbwexpws_w3-3_top5_apv_ws30")
+# main("reuters_nasari_30_rmswcbwexpws_w3-3_doc_pv")
 # main("20news50short10_doc2vec")
-main("reuters_nasari_doc2vec")
+main("reuters_doc2vec")

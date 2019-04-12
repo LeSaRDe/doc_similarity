@@ -14,7 +14,7 @@ def update_sim(doc_key, sim, count, doc_key1=None):
         cur.execute('UPDATE docs_sim set "%s"=? WHERE doc_id_pair=?' % col_name, (sim,doc_key))
     if count % 10000 == 0:
         conn.commit()
-        print "%s/124750 done. Time: %s" % (count, time.time()-start)
+        print "%s/61075 done. Time: %s" % (count, time.time()-start)
 
 
 def compare_two_apvs(col1_vect, col2_vect, dis_mode):
@@ -49,7 +49,10 @@ def main(apv_csv_file):
         for j, doc2 in enumerate(doc_ids[i+1:]):
             sim = compare_two_apvs(apv_df[doc1], apv_df[doc2], 'cosine')
             #sim = compare_two_apvs(apv_df[doc1], apv_df[doc2], 'js_div_rbf')
-            update_sim(doc1.replace("_", "/")+"#"+doc2.replace("_", "/"), sim, cnt, doc2.replace("_", "/")+"#"+doc1.replace("_", "/"))
+            if '20news50short' in dataset:
+                update_sim(doc1.replace("_", "/")+"#"+doc2.replace("_", "/"), sim, cnt, doc2.replace("_", "/")+"#"+doc1.replace("_", "/"))
+            elif 'reuters' in dataset:
+                update_sim(doc1 + "#" + doc2, sim, cnt, doc2 + "#" + doc1)
             cnt += 1
     conn.commit()
     cur.close()
@@ -59,4 +62,4 @@ def main(apv_csv_file):
     print "ALL DONE!"
 
 
-main('20news50short10_nasari_30_rmswcbwexpws_w3-3_top5ws50_apv_matrix.csv')
+main('reuters_nasari_30_rmswcbwexpws_w3-3_top5ws30_apv_matrix.csv')

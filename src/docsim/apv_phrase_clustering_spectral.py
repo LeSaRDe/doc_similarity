@@ -9,6 +9,7 @@ import idx_bit_translate
 import sqlite3
 import copy
 # from scipy.sparse.csgraph import connected_components
+import phrase_graph_utils
 
 data_path = '%s/workspace/data/' % os.environ['HOME']
 dataset = ''
@@ -28,144 +29,144 @@ MAX_DIAMETER = 3
 #    return sim
 
 
-def get_word_sim_for_phrase(db_cur, w1, w2):
-    if w1 is None or w2 is None:
-        raise Exception('[ERR]: iIvalid word input!')
-    db_cur.execute('SELECT idx from words_idx where word = ?', (w1,))
-    w1_idx = db_cur.fetchone()[0]
-    if w1_idx is None:
-        raise Exception('[ERR]: Cannot find %s' % w1)
-    db_cur.execute('SELECT idx from words_idx where word = ?', (w2,))
-    w2_idx = db_cur.fetchone()[0]
-    if w2_idx is None:
-        raise Exception('[ERR]: Cannot find %s' % w2)
-    if w1_idx == w2_idx:
-        w_sim = 1.0
-        return w_sim
-    elif w1_idx < w2_idx:
-        word_pair_id = idx_bit_translate.keys_to_key(w1_idx, w2_idx)
-    else:
-        word_pair_id = idx_bit_translate.keys_to_key(w2_idx, w1_idx)
-    db_cur.execute('SELECT sim from words_sim where word_pair_idx = ?', (word_pair_id,))
-    w_sim = db_cur.fetchone()[0]
-    if w_sim is None:
-        raise Exception('[ERR]: Cannot find sim for (%s, %s)' % (w1, w2))
-    return w_sim
+# def get_word_sim_for_phrase(db_cur, w1, w2):
+#     if w1 is None or w2 is None:
+#         raise Exception('[ERR]: iIvalid word input!')
+#     db_cur.execute('SELECT idx from words_idx where word = ?', (w1,))
+#     w1_idx = db_cur.fetchone()[0]
+#     if w1_idx is None:
+#         raise Exception('[ERR]: Cannot find %s' % w1)
+#     db_cur.execute('SELECT idx from words_idx where word = ?', (w2,))
+#     w2_idx = db_cur.fetchone()[0]
+#     if w2_idx is None:
+#         raise Exception('[ERR]: Cannot find %s' % w2)
+#     if w1_idx == w2_idx:
+#         w_sim = 1.0
+#         return w_sim
+#     elif w1_idx < w2_idx:
+#         word_pair_id = idx_bit_translate.keys_to_key(w1_idx, w2_idx)
+#     else:
+#         word_pair_id = idx_bit_translate.keys_to_key(w2_idx, w1_idx)
+#     db_cur.execute('SELECT sim from words_sim where word_pair_idx = ?', (word_pair_id,))
+#     w_sim = db_cur.fetchone()[0]
+#     if w_sim is None:
+#         raise Exception('[ERR]: Cannot find sim for (%s, %s)' % (w1, w2))
+#     return w_sim
 
 
-def get_phrase_sim(p1, p2):
-    # TODO
-    # test only
-    #return 1.0
-    global dataset
-    db_path = data_path + dataset + '.db'
-    db_conn = sqlite3.connect(db_path)
-    db_cur = db_conn.cursor()
-    ret_sim = 0.0
-
-    if len(p1) == 0 or len(p2) == 0 or len(p1) + len(p2) > 4 or len(p1) + len(p2) < 3:
-        print p1
-        print p2
-        raise Exception('[ERR]: p1, p2 are not valid:')
-    if len(p1) == 2 and len(p2) == 2:
-        # case 1: p1[0]-p2[0], p1[1]-p2[1]
-        p_sim1 = 0
-        w_sim1 = get_word_sim_for_phrase(db_cur, p1[0], p2[0])
-        #p_sim1 += w_sim1
-        w_sim2 = get_word_sim_for_phrase(db_cur, p1[1], p2[1])
-        p_sim1 = min(w_sim1, w_sim2)
-
-        # case 2: p1[0]-p2[1], p1[1]-p2[0]
-        p_sim2 = 0
-        w_sim1 = get_word_sim_for_phrase(db_cur, p1[0], p2[1])
-        #p_sim2 += w_sim1
-        w_sim2 = get_word_sim_for_phrase(db_cur, p1[1], p2[0])
-        p_sim2 = min(w_sim1, w_sim2)
-
-        ret_sim = max(p_sim1, p_sim2)
-    else:
-        if len(p1) == 1:
-            tmp_p1 = copy.deepcopy(p1)
-            tmp_p2 = copy.deepcopy(p2)
-        else:
-            tmp_p1 = copy.deepcopy(p2)
-            tmp_p2 = copy.deepcopy(p1)
-
-        w_sim1 = get_word_sim_for_phrase(db_cur, tmp_p1[0], tmp_p2[0])
-        w_sim2 = get_word_sim_for_phrase(db_cur, tmp_p1[0], tmp_p2[1])
-
-        ret_sim = min(w_sim1, w_sim2)
-
-    db_conn.close()
-    # we have to normalize word sims for nasari, because it ranges in [-1, 1],
-    # which will lead to trouble for spectral clustering.
-    if WORD_SIM_MODE == 'nasari':
-        ret_sim = (ret_sim - (-1)) / (1 - (-1))
-    return ret_sim
-
-
-def get_word_sim(w1, w2):
-    sim = 1.0
-    return sim
+# def get_phrase_sim(p1, p2):
+#     # TODO
+#     # test only
+#     #return 1.0
+#     global dataset
+#     db_path = data_path + dataset + '.db'
+#     db_conn = sqlite3.connect(db_path)
+#     db_cur = db_conn.cursor()
+#     ret_sim = 0.0
+#
+#     if len(p1) == 0 or len(p2) == 0 or len(p1) + len(p2) > 4 or len(p1) + len(p2) < 3:
+#         print p1
+#         print p2
+#         raise Exception('[ERR]: p1, p2 are not valid:')
+#     if len(p1) == 2 and len(p2) == 2:
+#         # case 1: p1[0]-p2[0], p1[1]-p2[1]
+#         p_sim1 = 0
+#         w_sim1 = get_word_sim_for_phrase(db_cur, p1[0], p2[0])
+#         #p_sim1 += w_sim1
+#         w_sim2 = get_word_sim_for_phrase(db_cur, p1[1], p2[1])
+#         p_sim1 = min(w_sim1, w_sim2)
+#
+#         # case 2: p1[0]-p2[1], p1[1]-p2[0]
+#         p_sim2 = 0
+#         w_sim1 = get_word_sim_for_phrase(db_cur, p1[0], p2[1])
+#         #p_sim2 += w_sim1
+#         w_sim2 = get_word_sim_for_phrase(db_cur, p1[1], p2[0])
+#         p_sim2 = min(w_sim1, w_sim2)
+#
+#         ret_sim = max(p_sim1, p_sim2)
+#     else:
+#         if len(p1) == 1:
+#             tmp_p1 = copy.deepcopy(p1)
+#             tmp_p2 = copy.deepcopy(p2)
+#         else:
+#             tmp_p1 = copy.deepcopy(p2)
+#             tmp_p2 = copy.deepcopy(p1)
+#
+#         w_sim1 = get_word_sim_for_phrase(db_cur, tmp_p1[0], tmp_p2[0])
+#         w_sim2 = get_word_sim_for_phrase(db_cur, tmp_p1[0], tmp_p2[1])
+#
+#         ret_sim = min(w_sim1, w_sim2)
+#
+#     db_conn.close()
+#     # we have to normalize word sims for nasari, because it ranges in [-1, 1],
+#     # which will lead to trouble for spectral clustering.
+#     if WORD_SIM_MODE == 'nasari':
+#         ret_sim = (ret_sim - (-1)) / (1 - (-1))
+#     return ret_sim
 
 
-# we keep the orig words without lowercasing them here
-def extract_phrase_pairs(doc_comp_res_folder):
+# def get_word_sim(w1, w2):
+#     sim = 1.0
+#     return sim
 
-    db_conn = sqlite3.connect(data_path + dataset + '.db')
-    db_cur = db_conn.cursor()
-    rows = db_cur.execute("SELECT doc_id from docs order by doc_id").fetchall()
-    docs = {row[0]: i for i, row in enumerate(rows)}
 
-    l_phrase_pairs = []
-    for i, doc_comp_res in enumerate(os.listdir(doc_comp_res_folder)):
-        if doc_comp_res.endswith('.json'):
-            with open(doc_comp_res_folder + doc_comp_res, 'r') as doc_comp_res_fd:
-                doc1_name, doc2_name = doc_comp_res.replace('_', '/').replace('.json', '').split('#')
-                s1_doc_idx, s2_doc_idx = docs[doc1_name], docs[doc2_name]
-                sent_pair_cycles = json.load(doc_comp_res_fd)['sentence_pair']
-                for sent_pair_key, cycles in sent_pair_cycles.items():
-                    s1_sent_idx, s2_sent_idx = sent_pair_key.split('-')
-                    for each_cyc in cycles['cycles']:
-                        # extract two phrases from a cycle
-                        p1 = []
-                        p2 = []
-                        p1_arc = 1
-                        p2_arc = 1
-                        p1_sent_locs = []
-                        p2_sent_locs = []
-                        for idx_w, each_w in enumerate(each_cyc):
-                            if ':L:' in each_w:
-                                if each_w[:2] == 's2':
-                                    tmp_p = each_w[5:].split('#')
-                                    p2_sent_locs.append(int(tmp_p[2]))
-                                    if tmp_p[3].strip() in PRESERVED_NER_LIST:
-                                        p2.append(tmp_p[0].strip())
-                                    else:
-                                        p2.append(tmp_p[0].strip().lower())
-                                elif each_w[:2] == 's1':
-                                    tmp_p = each_w[5:].split('#')
-                                    p1_sent_locs.append(int(tmp_p[2]))
-                                    if tmp_p[3].strip() in PRESERVED_NER_LIST:
-                                        p1.append(tmp_p[0].strip())
-                                    else:
-                                        p1.append(tmp_p[0].strip().lower())
-                            else:
-                                if each_w[:2] == 's1':
-                                    p1_arc += 1
-                                elif each_w[:2] == 's2':
-                                    p2_arc += 1
-                        p1_sent_locs.sort()
-                        p2_sent_locs.sort()
-                        # collect all paired phrases
-                        if len(p1) > 0 and len(p2) > 0:
-                            #l_phrase_pairs.append([p1, p2, p_sim])
-                            l_phrase_pairs.append([[p1, "%s-%s-%s" % (s1_doc_idx,s1_sent_idx, '-'.join(str(loc) for loc in p1_sent_locs)), p1_arc],
-                                                   [p2, "%s-%s-%s" % (s2_doc_idx,s2_sent_idx, '-'.join(str(loc) for loc in p2_sent_locs)), p2_arc]])
-                        else:
-                            print '[ERR]: Empty phrase exists: p1 = %s, p2 = %s' % ('#'.join(p1), '#'.join(p2))
-                            continue
-    return l_phrase_pairs
+# # we keep the orig words without lowercasing them here
+# def extract_phrase_pairs(doc_comp_res_folder):
+#
+#     db_conn = sqlite3.connect(data_path + dataset + '.db')
+#     db_cur = db_conn.cursor()
+#     rows = db_cur.execute("SELECT doc_id from docs order by doc_id").fetchall()
+#     docs = {row[0]: i for i, row in enumerate(rows)}
+#
+#     l_phrase_pairs = []
+#     for i, doc_comp_res in enumerate(os.listdir(doc_comp_res_folder)):
+#         if doc_comp_res.endswith('.json'):
+#             with open(doc_comp_res_folder + doc_comp_res, 'r') as doc_comp_res_fd:
+#                 doc1_name, doc2_name = doc_comp_res.replace('_', '/').replace('.json', '').split('#')
+#                 s1_doc_idx, s2_doc_idx = docs[doc1_name], docs[doc2_name]
+#                 sent_pair_cycles = json.load(doc_comp_res_fd)['sentence_pair']
+#                 for sent_pair_key, cycles in sent_pair_cycles.items():
+#                     s1_sent_idx, s2_sent_idx = sent_pair_key.split('-')
+#                     for each_cyc in cycles['cycles']:
+#                         # extract two phrases from a cycle
+#                         p1 = []
+#                         p2 = []
+#                         p1_arc = 1
+#                         p2_arc = 1
+#                         p1_sent_locs = []
+#                         p2_sent_locs = []
+#                         for idx_w, each_w in enumerate(each_cyc):
+#                             if ':L:' in each_w:
+#                                 if each_w[:2] == 's2':
+#                                     tmp_p = each_w[5:].split('#')
+#                                     p2_sent_locs.append(int(tmp_p[2]))
+#                                     if tmp_p[3].strip() in PRESERVED_NER_LIST:
+#                                         p2.append(tmp_p[0].strip())
+#                                     else:
+#                                         p2.append(tmp_p[0].strip().lower())
+#                                 elif each_w[:2] == 's1':
+#                                     tmp_p = each_w[5:].split('#')
+#                                     p1_sent_locs.append(int(tmp_p[2]))
+#                                     if tmp_p[3].strip() in PRESERVED_NER_LIST:
+#                                         p1.append(tmp_p[0].strip())
+#                                     else:
+#                                         p1.append(tmp_p[0].strip().lower())
+#                             else:
+#                                 if each_w[:2] == 's1':
+#                                     p1_arc += 1
+#                                 elif each_w[:2] == 's2':
+#                                     p2_arc += 1
+#                         p1_sent_locs.sort()
+#                         p2_sent_locs.sort()
+#                         # collect all paired phrases
+#                         if len(p1) > 0 and len(p2) > 0:
+#                             #l_phrase_pairs.append([p1, p2, p_sim])
+#                             l_phrase_pairs.append([[p1, "%s-%s-%s" % (s1_doc_idx,s1_sent_idx, '-'.join(str(loc) for loc in p1_sent_locs)), p1_arc],
+#                                                    [p2, "%s-%s-%s" % (s2_doc_idx,s2_sent_idx, '-'.join(str(loc) for loc in p2_sent_locs)), p2_arc]])
+#                         else:
+#                             print '[ERR]: Empty phrase exists: p1 = %s, p2 = %s' % ('#'.join(p1), '#'.join(p2))
+#                             continue
+#     return l_phrase_pairs
 
 
 ##########################################################################################
@@ -320,9 +321,6 @@ def dump_uf_clusters(d_clusters):
     dump_fd.close()
 
 
-##########################################################################################
-# Recursive Spectrl Clustering
-##########################################################################################
 def load_uf_clusters():
     with open(data_path + dataset + uf_dump_suffix, 'r') as dump_fd:
         uf_p_cluster = json.load(dump_fd)
@@ -338,66 +336,69 @@ def load_uf_clusters():
     return d_ud_clusters
 
 
+##########################################################################################
+# Recursive Spectrl Clustering
+##########################################################################################
 def get_connected_components(l_phrase_pairs):
-    full_p_graph = create_phrase_graph(l_phrase_pairs)
+    full_p_graph = phrase_graph_utils.create_phrase_graph(l_phrase_pairs)
     l_comp_graphs = [full_p_graph.subgraph(comp) for comp in nx.connected_components(full_p_graph)]
     return l_comp_graphs
 
 
-def get_phrase_in_graph(G, p):
-    nodes = G.nodes
-    if len(p) < 2:
-        if p[0] in nodes:
-            return p[0]
-        else:
-            return None
-    else:
-        if p[0]+'#'+p[1] in nodes:
-            return p[0]+'#'+p[1]
-        elif p[1]+'#'+p[0] in nodes:
-            return p[1]+'#'+p[0]
-        else:
-            return None
+# def get_phrase_in_graph(G, p):
+#     nodes = G.nodes
+#     if len(p) < 2:
+#         if p[0] in nodes:
+#             return p[0]
+#         else:
+#             return None
+#     else:
+#         if p[0]+'#'+p[1] in nodes:
+#             return p[0]+'#'+p[1]
+#         elif p[1]+'#'+p[0] in nodes:
+#             return p[1]+'#'+p[0]
+#         else:
+#             return None
 
 
-# we lowercases all words before add their corresponding phrases into graph
-def create_phrase_graph(l_phrase_pairs):
-    p_graph = nx.Graph() 
-    for p1, p2 in l_phrase_pairs:
-        # if the two phrases are already in the phrase graph, then ignore.
-        # otherwise, at least one new node is added to the graph, and also,
-        # a new edge is added to the graph as well. the weight of this edge
-        # is the sim between the two phrases.
-        p1_in_graph = get_phrase_in_graph(p_graph, p1[0])
-        p2_in_graph = get_phrase_in_graph(p_graph, p2[0])
-
-        if p1_in_graph is None:
-            p1_in_graph = '#'.join(p1[0])
-            p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
-        else:
-            if p1[1] not in p_graph.node[p1_in_graph]['loc']:
-                p_graph.node[p1_in_graph]['cnt'] += 1
-                p_graph.node[p1_in_graph]['loc'].append(p1[1])
-                p_graph.node[p1_in_graph]['arc'].append(p1[2])
-
-        if p2_in_graph is None:
-            p2_in_graph = '#'.join(p2[0])
-            p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])
-        else:
-            if p2[1] not in p_graph.node[p2_in_graph]['loc']:
-                p_graph.node[p2_in_graph]['cnt'] += 1
-                p_graph.node[p2_in_graph]['loc'].append(p2[1])
-                p_graph.node[p2_in_graph]['arc'].append(p2[2])
-
-        if not p_graph.has_edge(p1_in_graph, p2_in_graph) and p1_in_graph != p2_in_graph:
-            p_sim = get_phrase_sim(p1[0], p2[0])
-            p_graph.add_edge(p1_in_graph, p2_in_graph, weight=p_sim)
-
-    for n_str, n_attrs in list(p_graph.nodes(data=True)):
-        if len(n_attrs['loc']) != len(n_attrs['arc']):
-            print "[ERR] Loc Arc not match", n_str, n_attrs
-
-    return p_graph
+# # we lowercases all words before add their corresponding phrases into graph
+# def create_phrase_graph(l_phrase_pairs):
+#     p_graph = nx.Graph()
+#     for p1, p2 in l_phrase_pairs:
+#         # if the two phrases are already in the phrase graph, then ignore.
+#         # otherwise, at least one new node is added to the graph, and also,
+#         # a new edge is added to the graph as well. the weight of this edge
+#         # is the sim between the two phrases.
+#         p1_in_graph = get_phrase_in_graph(p_graph, p1[0])
+#         p2_in_graph = get_phrase_in_graph(p_graph, p2[0])
+#
+#         if p1_in_graph is None:
+#             p1_in_graph = '#'.join(p1[0])
+#             p_graph.add_node(p1_in_graph, cnt=1, loc=[p1[1]], arc=[p1[2]])
+#         else:
+#             if p1[1] not in p_graph.node[p1_in_graph]['loc']:
+#                 p_graph.node[p1_in_graph]['cnt'] += 1
+#                 p_graph.node[p1_in_graph]['loc'].append(p1[1])
+#                 p_graph.node[p1_in_graph]['arc'].append(p1[2])
+#
+#         if p2_in_graph is None:
+#             p2_in_graph = '#'.join(p2[0])
+#             p_graph.add_node(p2_in_graph, cnt=1, loc=[p2[1]], arc=[p2[2]])
+#         else:
+#             if p2[1] not in p_graph.node[p2_in_graph]['loc']:
+#                 p_graph.node[p2_in_graph]['cnt'] += 1
+#                 p_graph.node[p2_in_graph]['loc'].append(p2[1])
+#                 p_graph.node[p2_in_graph]['arc'].append(p2[2])
+#
+#         if not p_graph.has_edge(p1_in_graph, p2_in_graph) and p1_in_graph != p2_in_graph:
+#             p_sim = get_phrase_sim(p1[0], p2[0])
+#             p_graph.add_edge(p1_in_graph, p2_in_graph, weight=p_sim)
+#
+#     for n_str, n_attrs in list(p_graph.nodes(data=True)):
+#         if len(n_attrs['loc']) != len(n_attrs['arc']):
+#             print "[ERR] Loc Arc not match", n_str, n_attrs
+#
+#     return p_graph
 
 
 def build_aff_mat(p_graph):
@@ -429,6 +430,9 @@ def pred_cluster_size(p_graph, max_diameter):
     pred_n_clusters = int(math.ceil(p_graph.number_of_nodes() / float(pred_c_size)))
     if pred_n_clusters < 2:
         pred_n_clusters = 2
+    #TODO
+    #for bi-clustering
+    pred_n_clusters = 2
     return pred_n_clusters
 
 
@@ -439,7 +443,7 @@ def phrase_clustering(p_graph, aff_mat, init_n_clusters, max_diameter):
     if not nx.is_connected(p_graph):
         raise Exception('[ERR]: p_graph is not connected!')
     d_clusters = dict()
-    if p_graph.number_of_nodes() <= 200 and nx.diameter(p_graph) <= max_diameter:
+    if p_graph.number_of_nodes() <= 5000 and nx.diameter(p_graph) <= max_diameter:
         if list(p_graph.nodes)[0] in d_clusters.keys():
             raise Exception('[ERR]: Overlapping clusters emerge!')
         d_clusters[list(p_graph.nodes)[0]] = p_graph
@@ -529,7 +533,7 @@ def dump_rbsc_clusters(d_clusters):
     for i, c in enumerate(d_clusters):
         d_dump[i] = list(d_clusters[c].nodes(data=True))
 
-    with open(data_path + dataset + preffix + '_phrase_clusters_by_clusterid.json', 'w+') as dump_fd:
+    with open(data_path + dataset + preffix + '_bi_phrase_clusters_by_clusterid.json', 'w+') as dump_fd:
         json.dump(d_dump, dump_fd, indent=4)
     dump_fd.close()
 
@@ -556,7 +560,8 @@ def main(folder):
     global dataset, preffix
     dataset = folder[:folder.find('_')]
     preffix = folder[folder.find('_')+1:]
-    l_phrase_pairs = extract_phrase_pairs(data_path + folder + '/')
+    phrase_graph_utils.init(data_path, dataset)
+    l_phrase_pairs = phrase_graph_utils.extract_phrase_pairs(data_path + folder + '/')
     print '[INF]: phrase extraction is done!'
     #print l_phrase_pairs
     #p_clusters = union_find_clustering(l_phrase_pairs)
@@ -571,4 +576,4 @@ def main(folder):
     dump_rbsc_clusters(d_clusters)
     print '[INF]: recursive bi-spectral-clustering dump is done!'
 
-main('20news50short10_nasari_30_rmswcbwexpws_w3-3')
+main('reuters_nasari_30_rmswcbwexpws_w3-3')

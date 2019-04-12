@@ -5,10 +5,12 @@ import pandas as pd
 import build_single_doc_apv
 import idx_bit_translate
 import multiprocessing
+import phrase_graph_utils
 
 PHRASE_CLUSTER_METHOD = 'rbsc'
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
 WORD_SIM_THRESHOLD = 0.3
+TOP_SIM_DOCS = 5
 
 
 def get_doc_sim_from_db(col):
@@ -32,23 +34,23 @@ def get_doc_ids():
     #                 and doc_id not like "%sci.space%"
     #                 and doc_id not like "%sci.electronics%"
     #                 order by doc_id''')
-    cur.execute('''SELECT doc_id from docs order by doc_id''')
+    cur.execute('''SELECT doc_id from docs order by doc_id ''')
     rows = cur.fetchall()
     return rows
 
 
-def get_word_pair_sims():
-    pairwise_sims = dict()
-    all_sims = cur.execute('SELECT * from words_sim WHERE sim >= %s order by word_pair_idx' % WORD_SIM_THRESHOLD).fetchall()
-    print "Sim >= %s, total word pairs=%s " % (WORD_SIM_THRESHOLD,len(all_sims))
-    all_words_idx = cur.execute('SELECT * from words_idx').fetchall()
-    all_idx_word = dict()
-    for word, idx in all_words_idx:
-        all_idx_word[idx] = word
-    for idx, sim in all_sims:
-        w1_idx, w2_idx = idx_bit_translate.key_to_keys(idx)
-        pairwise_sims[all_idx_word[w1_idx]+"#"+all_idx_word[w2_idx]] = sim
-    return pairwise_sims
+# def get_word_pair_sims():
+#     pairwise_sims = dict()
+#     all_sims = cur.execute('SELECT * from words_sim WHERE sim >= %s order by word_pair_idx' % WORD_SIM_THRESHOLD).fetchall()
+#     print "Sim >= %s, total word pairs=%s " % (WORD_SIM_THRESHOLD,len(all_sims))
+#     all_words_idx = cur.execute('SELECT * from words_idx').fetchall()
+#     all_idx_word = dict()
+#     for word, idx in all_words_idx:
+#         all_idx_word[idx] = word
+#     for idx, sim in all_sims:
+#         w1_idx, w2_idx = idx_bit_translate.key_to_keys(idx)
+#         pairwise_sims[all_idx_word[w1_idx]+"#"+all_idx_word[w2_idx]] = sim
+#     return pairwise_sims
 
 
 def build_apv_matrix(phrase_cluster_by_clusterid, folder):
@@ -57,7 +59,7 @@ def build_apv_matrix(phrase_cluster_by_clusterid, folder):
     cluster_size = len(cluster_ids)
     print "Cluster size=%s" % cluster_size
     doc_ids = get_doc_ids()
-    word_pair_sims = get_word_pair_sims()
+    word_pair_sims = phrase_graph_utils.get_word_pair_sims()
 
     apv_df = pd.DataFrame(cluster_ids, columns=['cluster_id'])
 
@@ -99,7 +101,7 @@ def build_apv_matrix_parallel(phrase_cluster_by_clusterid, folder):
     # (u'talk.politics.mideast/77324',) ,
     # (u'talk.politics.mideast/77353',) ,
     # (u'talk.politics.mideast/77399',)]
-    word_pair_sims = get_word_pair_sims()
+    word_pair_sims = phrase_graph_utils.get_word_pair_sims()
 
     apv_processes = []
     for i, each_doc in enumerate(doc_ids):
@@ -118,9 +120,9 @@ def build_apv_matrix_parallel(phrase_cluster_by_clusterid, folder):
 
 def find_top_sim_doc_pairs(doc_id):
     if TOP_SIM_DOCS == -1:
-        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%"''' % doc_id
+        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like doc_id_pair like "%s#%%" or doc_id_pair like "%%#%s" order by "%s"''' % (doc_id, doc_id, col_name)
     else:
-        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%%%s%%" order by "%s" DESC limit %s''' % (doc_id, col_name, TOP_SIM_DOCS)
+        query = '''SELECT doc_id_pair FROM docs_sim WHERE doc_id_pair like "%s#%%" or doc_id_pair like "%%#%s" order by "%s" DESC limit %s''' % (doc_id, doc_id, col_name, TOP_SIM_DOCS)
     cur.execute(query)
     rows = cur.fetchall()
     return rows
@@ -131,6 +133,8 @@ def main(folder):
     dataset = folder[:folder.find('_')]
     data_path = '%s/workspace/data/' % os.environ['HOME']
     col_name = folder[folder.find('_') + 1:]
+
+    phrase_graph_utils.init(data_path, dataset)
 
     out_apv_files_path = data_path+folder+'_top5ws30_apv_vec/'
 
@@ -170,7 +174,7 @@ def main(folder):
     doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
     # if TOP_SIM_DOCS is set to -1, then all documents are taken into account.
     # TOP_SIM_DOCS = -1
-    TOP_SIM_DOCS = 5
+    # TOP_SIM_DOCS = 5
 
     parallel = True
 

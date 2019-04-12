@@ -120,7 +120,10 @@ def extract_phrase_pairs(doc_comp_res_folder):
     for i, doc_comp_res in enumerate(os.listdir(doc_comp_res_folder)):
         if doc_comp_res.endswith('.json'):
             with open(doc_comp_res_folder + doc_comp_res, 'r') as doc_comp_res_fd:
-                doc1_name, doc2_name = doc_comp_res.replace('_', '/').replace('.json', '').split('#')
+                if '20news' in data_set:
+                    doc1_name, doc2_name = doc_comp_res.replace('_', '/').replace('.json', '').split('#')
+                else:
+                    doc1_name, doc2_name = doc_comp_res.replace('.json', '').split('#')
                 s1_doc_idx, s2_doc_idx = docs[doc1_name], docs[doc2_name]
                 sent_pair_cycles = json.load(doc_comp_res_fd)['sentence_pair']
                 for sent_pair_key, cycles in sent_pair_cycles.items():
