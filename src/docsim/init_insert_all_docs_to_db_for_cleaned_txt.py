@@ -1,13 +1,15 @@
 import os, fnmatch
-import re
+# import re
 import contractions
 import time
 import sqlite3
-from nltk.tokenize import sent_tokenize
+# from nltk.tokenize import sent_tokenize
 
 DEBUG = False
-DOCS_ROOT = "/home/fcmeng/workspace/data/reuters21578/picked_docs/"
-conn = sqlite3.connect("/home/fcmeng/workspace/data/reuters.db")
+# DOCS_ROOT = "/home/fcmeng/workspace/data/reuters21578/picked_docs/"
+# conn = sqlite3.connect("/home/fcmeng/workspace/data/reuters.db")
+DOCS_ROOT = "/home/fcmeng/workspace/data/bbc/picked_docs/"
+conn = sqlite3.connect("/home/fcmeng/workspace/data/bbc.db")
 cur = conn.cursor()
 
 # pattern1 = re.compile("^[A-Za-z0-9]*$")
@@ -26,8 +28,12 @@ def insert_pre_ner_to_db(values, cnt):
 def cleanup_invalid_lines(lines):
     cleaned_txt = ''
     for i, line in enumerate(lines):
+        if i == 0:
+            line = line.strip()+"."
         # The first or second line is "From:", remove this line, but keep the "Subject" line
-        cleaned_txt = cleaned_txt + line.replace('\n', ' ')
+        contractioned_line = contractions.fix(line)
+        cleaned_txt = cleaned_txt + contractioned_line.replace('\n', ' ')
+        cleaned_txt = cleaned_txt.decode("ascii", errors="ignore").encode()
     return cleaned_txt
 
 

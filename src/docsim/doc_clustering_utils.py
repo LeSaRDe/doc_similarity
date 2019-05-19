@@ -17,29 +17,43 @@ def get_total_doc_size(dataset):
         # for 10 classes
         # TOTAL_DOC = 500
         # for 5 classes
-        # return 250
-        return 150
+        return 500
+        # return 150
+    elif dataset == "20news50short10-250":
+        return 250
     elif dataset == 'reuters':
         return 350
+    elif dataset == 'reuters-100':
+        return 100
+    elif dataset == 'bbc':
+        return 250
 
 
 def get_doc_ids(cur, dataset_flag):
     if dataset_flag == '20news50short10-250':
-        # cur.execute('''SELECT doc_id from docs
-        #                 where doc_id not like "%talk.politics.guns%"
-        #                 and doc_id not like "%alt.atheism%"
-        #                 and doc_id not like "%misc.forsale%"
-        #                 and doc_id not like "%sci.med%"
-        #                 and doc_id not like "%sci.electronics%"
-        #                 order by doc_id''')
         cur.execute('''SELECT doc_id from docs
-                                where doc_id not like "%talk.politics.guns%"
-                                and doc_id not like "%alt.atheism%"
-                                and doc_id not like "%sci.space%"
-                                and doc_id not like "%rec.motorcycles%"
-                                and doc_id not like "%sci.med%"
-                                and doc_id not like "%rec.sport.hockey%"
-                                and doc_id not like "%talk.politics.mideast%"
+                        where doc_id not like "%talk.politics.guns%"
+                        and doc_id not like "%alt.atheism%"
+                        and doc_id not like "%misc.forsale%"
+                        and doc_id not like "%sci.med%"
+                        and doc_id not like "%sci.electronics%"
+                        order by doc_id''')
+        # cur.execute('''SELECT doc_id from docs
+        #                         where doc_id not like "%talk.politics.guns%"
+        #                         and doc_id not like "%alt.atheism%"
+        #                         and doc_id not like "%sci.space%"
+        #                         and doc_id not like "%rec.motorcycles%"
+        #                         and doc_id not like "%sci.med%"
+        #                         and doc_id not like "%rec.sport.hockey%"
+        #                         and doc_id not like "%talk.politics.mideast%"
+        #                         order by doc_id''')
+    elif dataset_flag == 'reuters-100':
+        cur.execute('''SELECT doc_id from docs
+                                where doc_id not like "%ship%"
+                                and doc_id not like "%crude%"
+                                and doc_id not like "%gold%"
+                                and doc_id not like "%acq%"
+                                and doc_id not like "%interest%"
                                 order by doc_id''')
     else:
         cur.execute("SELECT doc_id from docs order by doc_id")
@@ -54,22 +68,30 @@ def get_doc_ids(cur, dataset_flag):
 
 def get_doc_sim_from_db(col, cur, dataset_flag):
     if dataset_flag == '20news50short10-250':
-        # cur.execute('''SELECT doc_id_pair, "'''+col+'''" from docs_sim
-        #                 where doc_id_pair not like "%talk.politics.guns%"
-        #                 and doc_id_pair not like "%alt.atheism%"
-        #                 and doc_id_pair not like "%misc.forsale%"
-        #                 and doc_id_pair not like "%sci.med%"
-        #                 and doc_id_pair not like "%sci.electronics%"
-        #                 order by doc_id_pair''')
-        cur.execute('''SELECT doc_id_pair, "''' + col + '''" from docs_sim 
-                                where doc_id_pair not like "%talk.politics.guns%"
-                                and doc_id_pair not like "%alt.atheism%"
-                                and doc_id_pair not like "%sci.space%"
-                                and doc_id_pair not like "%rec.motorcycles%"
-                                and doc_id_pair not like "%sci.med%"
-                                and doc_id_pair not like "%rec.sport.hockey%"
-                                and doc_id_pair not like "%talk.politics.mideast%"
-                                order by doc_id_pair''')
+        cur.execute('''SELECT doc_id_pair, "'''+col+'''" from docs_sim
+                        where doc_id_pair not like "%talk.politics.guns%"
+                        and doc_id_pair not like "%alt.atheism%"
+                        and doc_id_pair not like "%misc.forsale%"
+                        and doc_id_pair not like "%sci.med%"
+                        and doc_id_pair not like "%sci.electronics%"
+                        order by doc_id_pair''')
+        # cur.execute('''SELECT doc_id_pair, "''' + col + '''" from docs_sim
+        #                         where doc_id_pair not like "%talk.politics.guns%"
+        #                         and doc_id_pair not like "%alt.atheism%"
+        #                         and doc_id_pair not like "%sci.space%"
+        #                         and doc_id_pair not like "%rec.motorcycles%"
+        #                         and doc_id_pair not like "%sci.med%"
+        #                         and doc_id_pair not like "%rec.sport.hockey%"
+        #                         and doc_id_pair not like "%talk.politics.mideast%"
+        #                         order by doc_id_pair''')
+    elif dataset_flag == 'reuters-100':
+        cur.execute('''SELECT doc_id_pair, "'''+col+'''" from docs_sim
+                                        where doc_id_pair not like "%ship%"
+                                        and doc_id_pair not like "%crude%"
+                                        and doc_id_pair not like "%gold%"
+                                        and doc_id_pair not like "%acq%"
+                                        and doc_id_pair not like "%interest%"
+                                        order by doc_id_pair''')
     else:
         cur.execute('''SELECT doc_id_pair, "''' + col + '''" from docs_sim order by doc_id_pair''')
     rows = cur.fetchall()

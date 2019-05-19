@@ -28,26 +28,33 @@ import numpy
 #sent = 'Align, Disambiguate, and Walk (ADW) is a WordNet-based approach for measuring semantic similarity of arbitrary pairs of lexical items, from word senses to full texts.'
 
 NODE_ID_COUNTER = 0
-WORD_SIM_THRESHOLD_ADW = 0.75
-WORD_SIM_THRESHOLD_NASARI = 0.30
-WORD_SIM_THRESHOLD_NASARI_N = 0.30
-SEND_PORT_ADW = 8607
+WORD_SIM_THRESHOLD_ADW = 0.5
+WORD_SIM_THRESHOLD_NASARI = 0.5
+WORD_SIM_THRESHOLD_NASARI_N = 0.5
+SEND_PORT_ADW = 8606
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
 MULTI_WS_SERV = True
-MULTI_WS_SERV_MOD = 4
+MULTI_WS_SERV_MOD = 2
 RAND_SEED = 0
 # the other option is 'adw'
-WORD_SIM_MODE = 'nasari'
-#WORD_SIM_MODE = 'adw'
-#WORD_SIM_MODE = 'adw_tag'
-DB_CONN_STR = '/home/{0}/workspace/data/reuters.db'.format(os.environ['USER'])
+# WORD_SIM_MODE = 'nasari'
+# WORD_SIM_MODE = 'adw'
+WORD_SIM_MODE = 'adw_tag'
+# WORD_SIM_MODE = 'adw_offline'
+DB_CONN_STR = '/home/{0}/workspace/data/leefixsw.db'.format(os.environ['USER'])
 # used for lee vs leebg
 BGDB_CONN_STR = '/home/{0}/workspace/data/leebgfixsw.db'.format(os.environ['USER'])
 # used for Li65 sentence comparison
-LI65_COL1_CONN_STR = '/home/{0}/workspace/data/Li65/col1_sw.db'.format(os.environ['USER'])
-LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_sw.db'.format(os.environ['USER'])
+LI65_COL1_CONN_STR = '/home/{0}/workspace/data/Li65/col1_nosw.db'.format(os.environ['USER'])
+LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_nosw.db'.format(os.environ['USER'])
+# used for STS2017 sentence comparison
+STS_COL1_CONN_STR = '/home/{0}/workspace/data/sts2017/col1.db'.format(os.environ['USER'])
+STS_COL2_CONN_STR = '/home/{0}/workspace/data/sts2017/col2.db'.format(os.environ['USER'])
+# used for SICK sentence comparison
+SICK_COL1_CONN_STR = '/home/{0}/workspace/data/sick/col1.db'.format(os.environ['USER'])
+SICK_COL2_CONN_STR = '/home/{0}/workspace/data/sick/col2.db'.format(os.environ['USER'])
 # rmsw = remove stopwords
 # cbw = use cb_weight to set inter_edges' weights to very high when computing cycle basis
 # expws = exponentiate word similarities
@@ -58,8 +65,12 @@ LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_sw.db'.format(os.enviro
 # expn = exponentiate noun similarities
 # wo = weighted overlap simialrity algorithm
 # scyc = use simple cycles instead of min cycle basis
+# nosig = only use word sim
+# noner = no ner filtering
+# ssum = sum sim
+# lem = use lemma instead of word for word sim
 # test = only for test use
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/reuters_nasari_30_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/sick_adw_50_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
 #CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -73,25 +84,51 @@ CYC_RBF = False
 #CYC_SIG_PARAM 3 and 4 are used by exp(- (w1-param3)^2 / param4)
 CYC_SIG_PARAM_3 = 1.0
 CYC_SIG_PARAM_4 = 20.0
+# sum two word sims when computing sim of a cycle
+SUM_SIM = False
+# get word sim by lemma
+LEMMA_SIM = False
 # MAX_PROC = multiprocessing.cpu_count()
 # PROC_BATCH_SIZE = multiprocessing.cpu_count()
 MAX_PROC = 10
 PROC_BATCH_SIZE = 10
 # use simple cycles instead of min cycle basis
 SIMPLE_CYCLES = False
-# swtich for lee and 20news and reuters
-LEE = True
+# swtich for lee and 20news and reuters and bbc
+LEE = False
 # switch for lee vs leebg
 LEE_VS_LEEBG = False
-# switch for Li65
+# switch for Li65 and STS
 LI65 = True
 # swthich for msr
 MSR = False
 MSR_SENT_PAIR_FILE = '/home/{0}/workspace/data/msr/msr_sim.txt'.format(os.environ['USER'])
 
-SAVE_CYCLES = True
+SAVE_CYCLES = False
 
 PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC']
+# PRESERVED_NER_LIST = ['ORGANIZATION', 'LOCATION', 'MISC', 'PERSON']
+
+OFFLINE_DICT = '/home/{0}/workspace/doc_similarity/res/ws_offline_dict'.format(os.environ['USER'])
+doc_pair_dict = {}
+# for ADW Lee
+def fillDocPairDict(doc1, doc2):
+    global doc_pair_dict
+    babel_file = open(OFFLINE_DICT, 'r')
+    babel_ADW = {}
+    for line in babel_file:
+        ba = line.split(' : ')
+        babel_ADW[ba[0].strip()] = ba[1].split()
+    doc1_int = int(doc1)+1
+    doc2_int = int(doc2)+1
+    if doc1_int < doc2_int:
+        dpd_tmp = babel_ADW['(%s,%s)' % (doc1_int, doc2_int)]
+    else:
+        dpd_tmp = babel_ADW['(%s,%s)' % (doc2_int, doc1_int)]
+    for wp in dpd_tmp:
+        wp = wp.split(':')
+        doc_pair_dict[wp[0]] = float(wp[1])
+
 
 # this function takes a tree string and returns the graph of this tree
 # the format of the input tree string needs follow the CoreNLP Tree def.
@@ -213,8 +250,14 @@ def send_wordsim_request(mode, input_1, input_2):
             send_port += numpy.random.randint(MULTI_WS_SERV_MOD)
             #print "[DBG]: connecting port %s" % send_port
     elif mode == 'tt':
+
         send_str = mode + '#' + input_1 + '#' + input_2
         send_port = SEND_PORT_ADW
+        if MULTI_WS_SERV:
+            millis = int(round(time.time() * 1000))
+            millis &= 0xffffffffL
+            numpy.random.seed(millis)
+            send_port += numpy.random.randint(MULTI_WS_SERV_MOD)
         send_addr = SEND_ADDR_ADW
     else:
         raise Exception('[ERR]: Unsupported word comparison mode!')
@@ -285,7 +328,7 @@ def find_inter_edges(tree_1, tree_2):
                 if sim == float(0):
                     if word_1 == word_2:
                         sim = 1
-                if sim > WORD_SIM_THRESHOLD_ADW:
+                if sim >= WORD_SIM_THRESHOLD_ADW:
                     edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  100}))
             elif WORD_SIM_MODE == 'adw_tag':
                 # we use Java ADW word similarity server in this case
@@ -314,20 +357,54 @@ def find_inter_edges(tree_1, tree_2):
                     sim = send_wordsim_request('tt', word_1+':'+pos_1, word_2+':'+pos_2)
                 else:
                     sim = 0.0
-                if sim > WORD_SIM_THRESHOLD_ADW:
+                if sim >= WORD_SIM_THRESHOLD_ADW:
                     edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  100}))
-            elif WORD_SIM_MODE == 'nasari':
+            elif WORD_SIM_MODE == 'adw_offline':
+                tags_1 = leaf_1[0].split(':')[2]
+                pos_1 = tags_1.split('#')[4].strip()
+                lemma_1 = tags_1.split('#')[5].strip()
+                index_1 = tags_1.split('#')[2].strip()
+                tags_2 = leaf_2[0].split(':')[2]
+                pos_2 = tags_2.split('#')[4].strip()
+                lemma_2 = tags_2.split('#')[5].strip()
+                index_2 = tags_2.split('#')[2].strip()
                 if word_1 == word_2:
                     sim = 1.0
                 else:
-                    sim = send_wordsim_request('ww', word_1, word_2)
+                    ws_key = word_1 + '_' + index_1 + ',' + word_2 + '_' + index_2
+                    try:
+                        sim = doc_pair_dict[ws_key]
+                    except:
+                        sim = float(0)
+                if EXP_NOUN and pos_1[0].lower() == 'n' and pos_2[
+                    0].lower() == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
+                    print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
+                    # edges.append((leaf_1[0], leaf_2[0], {'weight': math.exp(sim), 'type': 'inter', 'cb_weight' :  sim*100}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight': 100}))
+                elif sim >= WORD_SIM_THRESHOLD_NASARI:
+                    # print "[DBG]: nasari sim = " + str(sim)
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight': 100}))
+                else:
+                    pass
+            elif WORD_SIM_MODE == 'nasari':
                 tags_1 = leaf_1[0].split(':')[2]
                 pos_1 = tags_1.split('#')[4].strip()
+                lemma_1 = tags_1.split('#')[5].strip()
                 tags_2 = leaf_2[0].split(':')[2]
                 pos_2 = tags_2.split('#')[4].strip()
+                lemma_2 = tags_2.split('#')[5].strip()
+                if word_1 == word_2:
+                    sim = 1.0
+                else:
+                    if LEMMA_SIM:
+                        print '[DBG]: lemma %s, %s' % (lemma_1, lemma_2)
+                        sim = send_wordsim_request('ww', lemma_1, lemma_2)
+                    else:
+                        sim = send_wordsim_request('ww', word_1, word_2)
                 if EXP_NOUN and pos_1[0].lower() == 'n' and pos_2[0].lower() == 'n' and sim >= WORD_SIM_THRESHOLD_NASARI_N:
-                    #print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
-                    edges.append((leaf_1[0], leaf_2[0], {'weight': math.exp(sim), 'type': 'inter', 'cb_weight' :  sim*100}))
+                    print "[DBG]: both nouns: " + leaf_1[0] + ' : ' + leaf_2[0]
+                    # edges.append((leaf_1[0], leaf_2[0], {'weight': math.exp(sim), 'type': 'inter', 'cb_weight' :  sim*100}))
+                    edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight': 100}))
                 elif sim >= WORD_SIM_THRESHOLD_NASARI:
                     #print "[DBG]: nasari sim = " + str(sim)
                     edges.append((leaf_1[0], leaf_2[0], {'weight': sim, 'type': 'inter', 'cb_weight' :  100}))
@@ -525,14 +602,26 @@ def cal_cycle_weight(cycle, inter_edges):
     #arch_weight_1  = math.exp(- (math.pow(w1 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
     #arch_weight_2  = math.exp(- (math.pow(w2 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
 
-    inter_weight = 1
-    #inter_weight = 0
-    for link in inter_edges:
-        if link[0] in s1_nodes["leaves"]:
-            if link[1] in s2_nodes["leaves"]:
-                if link[2]["weight"] < inter_weight:
-                #if link[2]["weight"] > inter_weight:
-                    inter_weight = link[2]["weight"]
+    if SUM_SIM:
+        # inter_weight = 1
+        inter_weight = 0
+        for link in inter_edges:
+            if link[0] in s1_nodes["leaves"]:
+                if link[1] in s2_nodes["leaves"]:
+                    inter_weight += link[2]["weight"]
+        print '[DBG]: sum sim: %s' % inter_weight
+                    # if link[2]["weight"] < inter_weight:
+                    #if link[2]["weight"] > inter_weight:
+                        # inter_weight = link[2]["weight"]
+    else:
+        inter_weight = 1
+        # inter_weight = 0
+        for link in inter_edges:
+            if link[0] in s1_nodes["leaves"]:
+                if link[1] in s2_nodes["leaves"]:
+                    if link[2]["weight"] < inter_weight:
+                        # if link[2]["weight"] > inter_weight:
+                        inter_weight = link[2]["weight"]
 
     #ret = arch_weight * inter_weight
     ret = arch_weight * math.exp(inter_weight*2)
@@ -777,6 +866,8 @@ def text_sim(db_cur):
                 print "[%s-%s]%s#%s.json already exists." % (i, j, doc1[0].replace('/','_'), doc2[0].replace('/','_'))
                 continue
             if i<j:
+                if WORD_SIM_MODE == 'adw_offline':
+                    fillDocPairDict(doc1[0], doc2[0])
                 valid_doc1, valid_doc2 = validate_doc_trees(doc1[1], doc2[1])
                 print "[DBG]: doc pairs = %s : %s" % (doc1[0], doc2[0])
                 p = multiprocessing.Process(target=doc_pair_sim, args=((doc1[0],valid_doc1), (doc2[0],valid_doc2)))
@@ -950,8 +1041,11 @@ def main():
         leebg_db_conn.close()
         db_conn.close()
     elif LI65:
-        li65_col1_db_conn = sqlite3.connect(LI65_COL1_CONN_STR)
-        li65_col2_db_conn = sqlite3.connect(LI65_COL2_CONN_STR)
+        # li65_col1_db_conn = sqlite3.connect(LI65_COL1_CONN_STR)
+        # li65_col2_db_conn = sqlite3.connect(LI65_COL2_CONN_STR)
+        li65_col1_db_conn = sqlite3.connect(SICK_COL1_CONN_STR)
+        li65_col2_db_conn = sqlite3.connect(SICK_COL2_CONN_STR)
+
         li65_col1_db_cur = li65_col1_db_conn.cursor()
         li65_col2_db_cur = li65_col2_db_conn.cursor()
         text_sim_li65(li65_col1_db_cur, li65_col2_db_cur)

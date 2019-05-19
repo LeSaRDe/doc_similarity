@@ -1,10 +1,14 @@
 import sqlite3
 
 # the original dataset file
-ORIG_DATA_FILE_PATH = "/home/fcmeng/workspace/data/lee_background.cor"
+# ORIG_DATA_FILE_PATH = "/home/fcmeng/workspace/data/lee_background.cor"
+# ORIG_DATA_FILE_PATH = "/home/fcmeng/workspace/data/stsbenchmark/col2.txt"
+ORIG_DATA_FILE_PATH = "/home/fcmeng/workspace/data/sick/col2.txt"
 # the output db 
-DB_PATH = "/home/fcmeng/workspace/data/lee_bg.db"
-COMMIT_MAX = 5
+# DB_PATH = "/home/fcmeng/workspace/data/lee_bg.db"
+# DB_PATH = "/home/fcmeng/workspace/data/stsbenchmark/col2.db"
+DB_PATH = "/home/fcmeng/workspace/data/sick/col2.db"
+COMMIT_MAX = 100
 
 # 'docs' table:
 # the schema of this table is fixed so far

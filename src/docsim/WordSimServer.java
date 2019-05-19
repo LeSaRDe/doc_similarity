@@ -16,7 +16,7 @@ class WordSimServer
      */
     // use this constant if we go with FixedThreadPool
     public final int MAX_THREADS = 6;
-    public final int SERV_PORT = 8607;
+    public int SERV_PORT = 8606;
     private final int MAX_TASK = 50;
     
     // FIXED means FixedThreadPool.
@@ -51,12 +51,13 @@ class WordSimServer
     /**
      * Class Methods
      */
-    public WordSimServer(ThreadPoolMode mode)
+    public WordSimServer(ThreadPoolMode mode, int serv_port)
     {
         // TODO
         // change this address to make this server available from outside.
         try
         {
+            SERV_PORT = serv_port;
             m_serv_addr = InetAddress.getByName(Constants.WS_SERVER_HOSTNAME);
             //m_serv_addr = InetAddress.getLocalHost();
             m_serv_sock = new DatagramSocket(SERV_PORT, m_serv_addr);
@@ -167,7 +168,13 @@ class WordSimServer
 
     public static void main(String[] argv)
     {
-        WordSimServer ws = new WordSimServer(WordSimServer.ThreadPoolMode.FIXED);
+        int serv_port = 8607;
+        if(argv.length != 0)
+        {
+            serv_port = Integer.valueOf(argv[0]);
+            System.out.println("[DBG]: SERV_PORT = " + argv[0]);
+        }
+        WordSimServer ws = new WordSimServer(WordSimServer.ThreadPoolMode.FIXED, serv_port);
         ws.go();
     }
 }

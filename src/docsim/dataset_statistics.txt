@@ -1,0 +1,23 @@
+20news50short10
+
+Total # of words: 7672
+Total # of APV-BI GPs: 71640
+Total # of APV-BI GP Cluster: 17194
+Total # of APV-Pred GPs: 70905
+Total # of APV-Pred GP Cluster: 16978
+
+reuters
+
+Total # of words: 4758
+Total # of APV-BI GPs: 87508
+Total # of APV-BI GP Cluster: 18793
+Total # of APV-Pred GPs: 87508
+Total # of APV-Pred GP Cluster: 19089
+
+BBC
+
+Total # of words: 6201
+Total # of APV-BI GPs: 76989
+Total # of APV-BI GP Cluster: 17462
+Total # of APV-Pred GPs: 76989
+Total # of APV-Pred GP Cluster: 17504

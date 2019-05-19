@@ -431,7 +431,7 @@ def pred_cluster_size(p_graph, max_diameter):
     if pred_n_clusters < 2:
         pred_n_clusters = 2
     #TODO
-    #for bi-clustering
+    # for bi-clustering
     pred_n_clusters = 2
     return pred_n_clusters
 
@@ -576,4 +576,6 @@ def main(folder):
     dump_rbsc_clusters(d_clusters)
     print '[INF]: recursive bi-spectral-clustering dump is done!'
 
-main('reuters_nasari_30_rmswcbwexpws_w3-3')
+# main('reuters_nasari_30_rmswcbwexpws_w3-3')
+# main('20news50short10_nasari_30_rmswcbwexpws_w3-3')
+main('bbc_nasari_30_rmswcbwexpws_w3-3')

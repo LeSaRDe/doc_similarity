@@ -29,6 +29,8 @@ def main(project_name, cycle):
         TOTAL_DOC = 500
     elif dataset_name == "reuters":
         TOTAL_DOC = 350
+    elif dataset_name == "bbc":
+        TOTAL_DOC = 250
 
     print "[Dataset]: %s, [Col name]: %s, [Total docs]: %s" % (dataset_name, col_name, TOTAL_DOC)
 
@@ -73,7 +75,7 @@ def main(project_name, cycle):
                     key = "%s#%s" % (int(keys[0])+1,int(keys[1])+1)
                     key1 = "%s#%s" % (int(keys[1])+1,int(keys[0])+1)
                 else:
-                    if "reuters" in dataset_name:
+                    if "reuters" in dataset_name or "bbc" in dataset_name:
                         key = file.replace('.json', '')
                     else:
                         key = file.replace('_', '/').replace('.json', '')
@@ -100,4 +102,5 @@ if __name__ == '__main__':
 
     # Give a folder name, the folder name must match the column name
     # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
-    main('reuters_nasari_30_rmswcbwexpws_w3-3', 'cycle')
+    # main('leefixsw_adwtag_10_rmswcbwexpws_w3-3', 'no cycle')
+    main('leefixsw_nasari_100_rmswcbwexpws_w3-3', 'no cycle')

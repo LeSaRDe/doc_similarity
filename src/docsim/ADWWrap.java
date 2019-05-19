@@ -21,6 +21,8 @@ class ADWWrap
     {
         m_adw = new ADW();
         m_measure = new WeightedOverlap();
+        //m_measure = new Cosine();
+        //m_measure = new SignatureComparison();
     }
 
     private boolean check_word_pos(String word_pos)
@@ -47,6 +49,8 @@ class ADWWrap
         {
             ret = m_adw.getPairSimilarity(word_pos_1, word_pos_2, 
                     DisambiguationMethod.ALIGNMENT_BASED, m_measure, ItemType.SURFACE_TAGGED, ItemType.SURFACE_TAGGED);
+            //ret = m_adw.getPairSimilarity(word_pos_1, word_pos_2, 
+            //        DisambiguationMethod.NONE, m_measure, ItemType.SURFACE_TAGGED, ItemType.SURFACE_TAGGED);
             //ret = m_adw.getPairSimilarity(word_pos_1, word_pos_2, 
             //        DisambiguationMethod.NONE, m_measure, ItemType.SURFACE_TAGGED, ItemType.SURFACE_TAGGED);
             //System.out.println("[DBG]: sim = " + ret.toString());

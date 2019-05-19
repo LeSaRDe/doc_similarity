@@ -12,6 +12,11 @@ data_set = ''
 data_path = ''
 WORD_SIM_THRESHOLD = 0.3
 
+data_path = '%s/workspace/data/' % os.environ['HOME']
+dataset = ''
+run_name = ''
+MAX_DIAMETER = 3
+
 # init this utils module before anything going
 def init(in_data_path, in_data_set):
     global data_set, data_path
@@ -119,6 +124,10 @@ def extract_phrase_pairs(doc_comp_res_folder):
     l_phrase_pairs = []
     for i, doc_comp_res in enumerate(os.listdir(doc_comp_res_folder)):
         if doc_comp_res.endswith('.json'):
+            # #TODO
+            # #test only
+            # if 'livestock_12376#livestock_9585' in doc_comp_res:
+            #     print 'get!'
             with open(doc_comp_res_folder + doc_comp_res, 'r') as doc_comp_res_fd:
                 if '20news' in data_set:
                     doc1_name, doc2_name = doc_comp_res.replace('_', '/').replace('.json', '').split('#')
@@ -297,3 +306,14 @@ def create_phrase_graph(l_phrase_pairs):
     #         raise Exception("[ERR] Loc Arc not match: %s, %s." % (n_str, n_attrs))
 
     return p_graph
+
+
+# def main(folder):
+#     global dataset, preffix
+#     dataset = folder[:folder.find('_')]
+#     preffix = folder[folder.find('_') + 1:]
+#     init(data_path, dataset)
+#     l_phrase_pairs = extract_phrase_pairs(data_path + folder + '/')
+#     g = create_phrase_graph(l_phrase_pairs)
+#
+# main('reuters_nasari_30_rmswcbwexpws_w3-3')

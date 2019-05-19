@@ -203,5 +203,7 @@ def main(project_name):
     # plot_roc(FPR, TPR, target_path + sim_file.replace(".txt", "") + "_roc")
 
 
-main('leefixsw_nasari_65_rmswcbwexpws_w3-3')
+main('leefixsw_adwtag_100_rmswcbwexpws_w3-3')
 # main('leefixsw_nasari_doc2vec')
+# main('leefixsw_glove_doc2vec')
+# main('leefixsw_fasttext_doc2vec')

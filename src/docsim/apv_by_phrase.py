@@ -136,7 +136,7 @@ def main(folder):
 
     phrase_graph_utils.init(data_path, dataset)
 
-    out_apv_files_path = data_path+folder+'_top5ws30_apv_vec/'
+    out_apv_files_path = data_path+folder+'_top5ws30_bi_apv_vec/'
 
     global conn, cur
     conn = sqlite3.connect("%s%s.db" % (data_path, dataset))
@@ -149,7 +149,7 @@ def main(folder):
     #     phrase_cluster_by_phrase = json.load(infile)
     # infile.close()
 
-    with open(data_path+folder+"_phrase_clusters_by_clusterid.json",'r') as infile:
+    with open(data_path+folder+"_bi_phrase_clusters_by_clusterid.json",'r') as infile:
         phrase_cluster_by_clusterid = json.load(infile)
     infile.close()
 
@@ -165,13 +165,15 @@ def main(folder):
     # full_doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
     #                  'rec.motorcycles': 4, 'misc.forsale': 5,'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
     #                  'talk.politics.mideast': 9}
-    full_doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
+    # full_doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
+    full_doc_categories = {'business':0, 'entertainment':1, 'politics':2, 'sport':3, 'tech':4}
     # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.med': 1, 'rec.motorcycles': 2, 'rec.sport.hockey': 3,
     #                   'talk.politics.mideast': 4}
     # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
     #                   'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7,
     #                   'rec.sport.hockey': 8, 'talk.politics.mideast': 9}
-    doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
+    # doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
+    doc_categories = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}
     # if TOP_SIM_DOCS is set to -1, then all documents are taken into account.
     # TOP_SIM_DOCS = -1
     # TOP_SIM_DOCS = 5
@@ -182,9 +184,10 @@ def main(folder):
         build_apv_matrix_parallel(phrase_cluster_by_clusterid, data_path + folder)
     else:
         apv_matrix = build_apv_matrix(phrase_cluster_by_clusterid, data_path+folder)
-        apv_matrix.to_csv(data_path+dataset+'_'+PHRASE_CLUSTER_METHOD+'_apv_matrix_hard.csv', sep=',', index=False)
+        apv_matrix.to_csv(data_path+dataset+'_'+PHRASE_CLUSTER_METHOD+'_apv_matrix_pred.csv', sep=',', index=False)
 
 
 if __name__ == '__main__':
     # must have the phrase cluster saved in json files
-    main("reuters_nasari_30_rmswcbwexpws_w3-3")
+    # main("20news50short10_nasari_30_rmswcbwexpws_w3-3")
+    main("bbc_nasari_30_rmswcbwexpws_w3-3")

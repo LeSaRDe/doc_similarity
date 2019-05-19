@@ -14,7 +14,7 @@ def main(db_name):
 
 
     # Generate key pairs and save to a txt file
-    outfile_path = "/home/fcmeng/workspace/doc_similarity/res/reuters_all_keys.txt"
+    outfile_path = "/home/fcmeng/workspace/doc_similarity/res/bbc_all_keys.txt"
 
     global conn, cur
     conn = sqlite3.connect(db_name)
@@ -41,4 +41,4 @@ def main(db_name):
 
 
 if __name__ == '__main__':
-    main('/home/fcmeng/workspace/data/reuters.db')
+    main('/home/fcmeng/workspace/data/bbc.db')

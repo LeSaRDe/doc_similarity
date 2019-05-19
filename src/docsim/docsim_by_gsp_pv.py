@@ -70,7 +70,7 @@ def sim_thread_run(doc1_name, doc2_name, doc1_dict, doc2_dict, sim_array, index,
     if '20news50short' in dataset:
         update_sim(doc1_name.replace("_", "/").replace('.json', '').strip() + "#" + doc2_name.replace("_", "/").replace('.json', '').strip(), sim, index,
                 doc2_name.replace("_", "/").replace('.json', '').strip() + "#" + doc1_name.replace("_", "/").replace('.json', '').strip(), db_path)
-    elif 'reuters' in dataset:
+    elif 'reuters' in dataset or 'bbc' in dataset:
         update_sim(doc1_name.replace('.json', '').strip() + "#" + doc2_name.replace('.json', '').strip(), sim, index,
                    doc2_name.replace('.json', '').strip() + "#" + doc1_name.replace('.json', '').strip(), db_path)
 
@@ -104,19 +104,26 @@ def main(folder):
     l_threads = []
     # thread_done_cnt = 0
     for i, doc1 in enumerate(all_files):
+        # # TODO
+        # doc1 = 'ship_3329.json'
         doc1_vec = json.load(open(data_path+folder+"/"+doc1, 'r'))
+
         for doc2 in all_files[i+1:]:
+            # # TODO
+            # doc2 = 'ship_4778.json'
             doc2_vec = json.load(open(data_path+folder+"/"+doc2, 'r'))
 
             doc1_uni_vec, doc2_uni_vec = get_uniform_vecs_for_two_docs(doc1_vec, doc2_vec)
             sim = compare_two_pvs(doc1_uni_vec, doc2_uni_vec, 'cosine')
+            # #TODO
+            # return
             if '20news50short' in dataset:
                 update_sim(
                     doc1.replace("_", "/").replace('.json', '').strip() + "#" + doc2.replace("_", "/").replace(
                         '.json', '').strip(), sim, sim_array_idx,
                     doc2.replace("_", "/").replace('.json', '').strip() + "#" + doc1.replace("_", "/").replace(
                         '.json', '').strip(), cur)
-            elif 'reuters' in dataset:
+            elif 'reuters' in dataset or 'bbc' in dataset:
                 update_sim(
                     doc1.replace('.json', '').strip() + "#" + doc2.replace('.json', '').strip(), sim, sim_array_idx,
                     doc2.replace('.json', '').strip() + "#" + doc1.replace('.json', '').strip(), cur)
@@ -144,4 +151,5 @@ def main(folder):
     conn.close()
 
 
-main("reuters_nasari_30_rmswcbwexpws_w3-3_doc_pv")
+# main("reuters_nasari_30_rmswcbwexpws_w3-3_doc_pv")
+main("bbc_nasari_30_rmswcbwexpws_w3-3_doc_pv")

@@ -269,4 +269,5 @@ def main(doc_folder_name):
     if MULTI_PROC:
         proc_cool_down(l_doc_pv_procs, 1)
 
-main('reuters_nasari_30_rmswcbwexpws_w3-3')
+# main('reuters_nasari_30_rmswcbwexpws_w3-3')
+main('bbc_nasari_30_rmswcbwexpws_w3-3')

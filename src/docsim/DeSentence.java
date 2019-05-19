@@ -248,6 +248,10 @@ public class DeSentence
 
     public boolean isPerson(String token)
     {
+        if(!Constants.RM_PERSON)
+        {
+            return false;
+        }
         String ner = token.split("#")[3];
         if(ner == null)
         {

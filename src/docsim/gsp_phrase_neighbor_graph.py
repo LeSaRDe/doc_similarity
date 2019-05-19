@@ -112,5 +112,6 @@ def main(folder):
     # print pv
 
 
-main('reuters_nasari_30_rmswcbwexpws_w3-3')
+# main('reuters_nasari_30_rmswcbwexpws_w3-3')
 # main('phrase_neigbhor_test')
+main('bbc_nasari_30_rmswcbwexpws_w3-3')
