@@ -10,6 +10,3 @@ for file in `find /home/$USER/workspace/lib  -name "*.jar"`; do export CLASSPATH
 #for file in `find /home/fcmeng/babel/BabelNet-API-4.0.1 -name "*.jar"`; do export CLASSPATH="$CLASSPATH:`realpath $file`:/home/fcmeng/babel/BabelNet-API-4.0.1/config"; done
 #export CLASSPATH="$CLASSPATH:/home/fcmeng/adw/ADW-master/jar/*"
 export _JAVA_OPTIONS="-Djava.net.preferIPv4Stack=true"
-#module load Java/1.8.0_162
-#module load pip
-#pip install --user idna
