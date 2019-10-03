@@ -7,14 +7,14 @@ import copy
 def main(data_name):
     global dataset, data_path, TOTAL_DOC
     dataset = data_name[:data_name.find('_')]
-    data_path = '%s/workspace/data/' % os.environ['HOME']
+    data_path = '%s/workspace/data/docsim/' % os.environ['HOME']
     col_name = data_name[data_name.find('_') + 1:]
     TOTAL_DOC = doc_clustering_utils.get_total_doc_size(dataset)
     # TOTAL_DOC=250
     # dataset_flag = '20news50short10-250'
-    # dataset_flag = '20news50short10'
+    dataset_flag = '20news50short10'
     # dataset_flag = 'reuters'
-    dataset_flag = 'bbc'
+    # dataset_flag = 'bbc'
 
     global conn, cur
     conn = sqlite3.connect("%s%s.db" % (data_path, dataset))
@@ -27,27 +27,27 @@ def main(data_name):
     #                   'talk.politics.mideast': 4}
     # doc_categories = {'talk.politics.guns': 0, 'alt.atheism': 1, 'misc.forsale': 2, 'sci.med': 3,
     #                   'sci.electronics': 4}
-    # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
-    # 'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
-    # 'talk.politics.mideast': 9}
+    doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'talk.politics.guns': 1, 'alt.atheism': 2, 'sci.space': 3,
+    'rec.motorcycles': 4, 'misc.forsale': 5, 'sci.med': 6, 'sci.electronics': 7, 'rec.sport.hockey': 8,
+    'talk.politics.mideast': 9}
     # doc_categories = {'talk.politics.guns': 0, 'alt.atheism': 1, 'talk.politics.mideast': 2}
     # doc_categories = {'comp.sys.ibm.pc.hardware': 0, 'sci.electronics': 1, 'misc.forsale': 2}
     # doc_categories = {'soybean': 0, 'gold': 1, 'crude': 2, 'livestock': 3, 'acq': 4, 'interest': 5, 'ship': 6}
     # doc_categories = {'soybean': 0, 'livestock': 3}
-    doc_categories = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}
+    # doc_categories = {'business': 0, 'entertainment': 1, 'politics': 2, 'sport': 3, 'tech': 4}
 
     doc_id_index, id_to_doc = doc_clustering_utils.get_doc_ids(cur=cur, dataset_flag=dataset_flag)
     org_doc_labels = doc_clustering_utils.label_org_doc_ids(doc_id_index, doc_categories, TOTAL_DOC)
 
-    outfile = open('%s/workspace/data/%s_doc_cluster_m5_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
+    outfile = open('%s/workspace/data/docsim/%s_doc_cluster_c10_%s.txt' % (os.environ['HOME'], dataset, col_name), 'w+')
     outfile.write(str(doc_id_index))
 
     aff_matrix = None
     kmeans_matrix = None
 
-    for n_size in [5, 6, 7, 8, 9, 10]:
+    # for n_size in [5, 6, 7, 8, 9, 10]:
     # for n_size in [7, 8, 9, 10, 11, 12, 13, 14]:
-    # for n_size in [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]:
+    for n_size in [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]:
     # for n_size in [2]:
         # ==>spectral_clustering
         if run_clustering == 'spectral' or run_clustering == 'all':
@@ -81,6 +81,8 @@ def main(data_name):
 # main("20news50short10_glove_doc2vec")
 # main("20news50short10_doc2vec")
 # main("20news50short10_lexvec_doc2vec")
+# main("20news50short10_lexvec_subword")
+main("20news50short10_lexvec_context")
 # main("20news50short10_fasttext_doc2vec")
 # main("20news50short10_sent2vec_doc2vec")
 # main("reuters_nasari_30_rmswcbwexpws_w3-3_top5ws30_apv")
@@ -97,7 +99,7 @@ def main(data_name):
 # main("bbc_nasari_30_rmswcbwexpws_w3-3_top5ws30_bi_apv")
 # main("bbc_doc2vec")
 # main("bbc_nasari_30_rmswcbwexpws_w3-3_doc_pv")
-main("bbc_glove_avg_doc2vec")
+# main("bbc_glove_avg_doc2vec")
 # main("bbc_fasttext_doc2vec")
 # main("bbc_lexvec_doc2vec")
 # main("bbc_sent2vec_doc2vec")

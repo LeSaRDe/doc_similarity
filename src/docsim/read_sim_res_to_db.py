@@ -35,7 +35,7 @@ def main(project_name, cycle):
     print "[Dataset]: %s, [Col name]: %s, [Total docs]: %s" % (dataset_name, col_name, TOTAL_DOC)
 
     global conn, cur
-    conn = sqlite3.connect("/home/%s/workspace/data/%s.db" % (os.environ['USER'], dataset_name))
+    conn = sqlite3.connect("/home/%s/workspace/data/docsim/%s.db" % (os.environ['USER'], dataset_name))
     cur = conn.cursor()
 
     if INSERT_DOCS_PAIR_KEYS:
@@ -65,7 +65,7 @@ def main(project_name, cycle):
     else:
         print "Doc pair keys are already inserted."
 
-    files_path = '/home/%s/workspace/data/%s/' % (os.environ['USER'], project_name)
+    files_path = '/home/%s/workspace/data/docsim/%s/' % (os.environ['USER'], project_name)
     cnt = 0
     for file in os.listdir(files_path):
         if file.endswith(".json"):
@@ -103,4 +103,5 @@ if __name__ == '__main__':
     # Give a folder name, the folder name must match the column name
     # Use "cycle" when the doc_sim txt file contains cycles; otherwise, use "no cycle"
     # main('leefixsw_adwtag_10_rmswcbwexpws_w3-3', 'no cycle')
-    main('leefixsw_nasari_100_rmswcbwexpws_w3-3', 'no cycle')
+    # main('leefixsw_nasari_100_rmswcbwexpws_w3-3', 'no cycle')
+    main('leefixsw_lexvec_40_rmswcbwexpws_w3-3', 'cycle')
