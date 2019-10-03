@@ -32,7 +32,7 @@ WORD_SIM_THRESHOLD_ADW = 0.5
 WORD_SIM_THRESHOLD_NASARI = 0.5
 WORD_SIM_THRESHOLD_NASARI_N = 0.5
 WORD_SIM_THRESHOLD_LEXVEC = 0.4
-WORD_SIM_THRESHOLD_LEXVEC_N = 0.5
+WORD_SIM_THRESHOLD_LEXVEC_N = 0.4
 SEND_PORT_ADW = 8606
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
@@ -46,7 +46,7 @@ WORD_SIM_MODE = 'lexvec'
 # WORD_SIM_MODE = 'adw'
 # WORD_SIM_MODE = 'adw_tag'
 # WORD_SIM_MODE = 'adw_offline'
-DB_CONN_STR = '/home/{0}/workspace/data/docsim/leefixsw.db'.format(os.environ['USER'])
+DB_CONN_STR = '/home/{0}/workspace/data/docsim/20news50short10.db'.format(os.environ['USER'])
 # used for lee vs leebg
 BGDB_CONN_STR = '/home/{0}/workspace/data/leebgfixsw.db'.format(os.environ['USER'])
 # used for Li65 sentence comparison
@@ -56,8 +56,8 @@ LI65_COL2_CONN_STR = '/home/{0}/workspace/data/Li65/col2_nosw.db'.format(os.envi
 STS_COL1_CONN_STR = '/home/{0}/workspace/data/sts2017/col1.db'.format(os.environ['USER'])
 STS_COL2_CONN_STR = '/home/{0}/workspace/data/sts2017/col2.db'.format(os.environ['USER'])
 # used for SICK sentence comparison
-SICK_COL1_CONN_STR = '/home/{0}/workspace/data/sick/col1.db'.format(os.environ['USER'])
-SICK_COL2_CONN_STR = '/home/{0}/workspace/data/sick/col2.db'.format(os.environ['USER'])
+SICK_COL1_CONN_STR = '/home/{0}/workspace/data/docsim/sick/col1.db'.format(os.environ['USER'])
+SICK_COL2_CONN_STR = '/home/{0}/workspace/data/docsim/sick/col2.db'.format(os.environ['USER'])
 # rmsw = remove stopwords
 # cbw = use cb_weight to set inter_edges' weights to very high when computing cycle basis
 # expws = exponentiate word similarities
@@ -73,7 +73,7 @@ SICK_COL2_CONN_STR = '/home/{0}/workspace/data/sick/col2.db'.format(os.environ['
 # ssum = sum sim
 # lem = use lemma instead of word for word sim
 # test = only for test use
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/docsim/leefixsw_lexvec_40_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/docsim/sick_lexvec_40_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
 # CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -98,11 +98,11 @@ PROC_BATCH_SIZE = 10
 # use simple cycles instead of min cycle basis
 SIMPLE_CYCLES = False
 # swtich for lee and 20news and reuters and bbc
-LEE = True
+LEE = False
 # switch for lee vs leebg
 LEE_VS_LEEBG = False
-# switch for Li65 and STS
-LI65 = False
+# switch for Li65 and STS and SICK
+LI65 = True
 # swthich for msr
 MSR = False
 MSR_SENT_PAIR_FILE = '/home/{0}/workspace/data/msr/msr_sim.txt'.format(os.environ['USER'])
@@ -920,6 +920,9 @@ def text_sim_lee_vs_leebg(lee_db_cur, leebg_db_cur):
 
 # this function is used for Li65 sentence comparison
 def text_sim_li65(col1_db_cur, col2_db_cur):
+    if WORD_SIM_MODE == 'lexvec':
+        global g_lexvec_model
+        g_lexvec_model = load_lexvec_model()
     print "[INF]: Li65 sentence comparison ..."
     col1_db_cur.execute('SELECT doc_id, parse_trees FROM docs WHERE parse_trees is NOT null order by doc_id')
     # db_cur.execute("SELECT doc_id, parse_trees FROM docs WHERE doc_id = '13' OR doc_id = '31'")
@@ -936,22 +939,22 @@ def text_sim_li65(col1_db_cur, col2_db_cur):
     sim_procs = []
     proc_id = 0
     proc_batch = 0
+    done_proc_count = 0
     for i in range(len(col1_rows)):
         valid_doc1, valid_doc2 = validate_doc_trees(col1_rows[i][1], col2_rows[i][1])
-        p = multiprocessing.Process(target=doc_pair_sim,
-                                    args=((col1_rows[i][0], valid_doc1), (col2_rows[i][0], valid_doc2)))
+        # p = multiprocessing.Process(target=doc_pair_sim,
+        #                             args=((col1_rows[i][0], valid_doc1), (col2_rows[i][0], valid_doc2)))
+        p = threading.Thread(target=doc_pair_sim, args=((col1_rows[i][0], valid_doc1), (col2_rows[i][0], valid_doc2)))
         proc_id += 1
         sim_procs.append(p)
         p.start()
-        if proc_id >= PROC_BATCH_SIZE:
-            proc_batch += 1
-            proc_id = 0
-        if len(sim_procs) >= MAX_PROC:
-            # print "[DBG]: cool down 1"
-            sim_procs_cool_down(sim_procs)
-            print "[INF]: {0:.0%} done!".format(float(proc_batch * PROC_BATCH_SIZE) / float(total_doc_pair_count))
-    sim_procs_cool_down(sim_procs)
-    print "[INF]: {0:.0%} done!".format(float(total_doc_pair_count) / float(total_doc_pair_count))
+        current_proc_count = len(sim_procs)
+        after_cool_down_proc_count = sim_procs_cool_down(sim_procs, MAX_PROC)
+        done_proc_count += (current_proc_count - after_cool_down_proc_count)
+        print("[INF]: {0:.0%} done!".format(float(done_proc_count) / float(total_doc_pair_count)))
+    after_cool_down_proc_count = sim_procs_cool_down(sim_procs, MAX_PROC)
+    done_proc_count += (current_proc_count - after_cool_down_proc_count)
+    print("[INF]: {0:.0%} done!".format(float(done_proc_count) / float(total_doc_pair_count)))
 
 
 # this function is used for MSR sentence comparison
