@@ -16,6 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import edu.stanford.nlp.pipeline.*;
 import edu.stanford.nlp.ling.*;
 import edu.stanford.nlp.trees.*;
+import edu.stanford.nlp.semgraph.*;
 
 
 public class CoreNLPWrap
@@ -65,7 +66,7 @@ public class CoreNLPWrap
     {
         CoreDocument coredoc;
         m_props = new Properties();
-        m_props.setProperty("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
+        m_props.setProperty("annotators", Constants.CORENLP_ANNOTATORS);
         if(!online)
         {
             m_online = false;
@@ -104,7 +105,7 @@ public class CoreNLPWrap
     public CoreNLPWrap(String in_text)
     {
         m_props = new Properties();
-        m_props.setProperty("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
+        m_props.setProperty("annotators", Constants.CORENLP_ANNOTATORS);
         //int port = 9000 + ThreadLocalRandom.current().nextInt(0, 6);
         m_curr_port_seed += 1;
         m_curr_port_seed %= 4;
@@ -236,6 +237,21 @@ public class CoreNLPWrap
         for(DeSentence desent : m_desentences)
         {
             desent.setConstituentTree(m_sentences.get(m_desentences.indexOf(desent)).constituencyParse());
+        }
+        return ret;
+    }
+
+
+    public boolean getDependencyTrees()
+    {
+        boolean ret = true;
+        if(m_sentences == null || m_desentences == null)
+        {
+            return false;
+        }
+        for(DeSentence desent : m_desentences)
+        {
+            desent.setDependencyTree(m_sentences.get(m_desentences.indexOf(desent)).dependencyParse());
         }
         return ret;
     }

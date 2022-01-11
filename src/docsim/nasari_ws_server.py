@@ -4,8 +4,8 @@ import os
 from multiprocessing.dummy import Pool
 
 SERV_PORT = 8306
-WV_MODEL_BIN = "/hpchome/fcmeng/nasari/NASARIembed+UMBC_w2v.bin"
-WV_MODEL = "/hpchome/fcmeng/nasari/NASARIembed+UMBC_w2v_model"
+WV_MODEL_BIN = "/home/mf3jh/workspace/lib/NASARIembed+UMBC_w2v.bin"
+WV_MODEL = "/home/mf3jh/workspace/lib/NASARIembed+UMBC_w2v_model"
 
 g_wv_model = None
 g_serv_sock = None
@@ -21,7 +21,7 @@ def load_nasari_w2v():
 def compute_ws(param):
     global g_wv_model
     global g_serv_sock
-    msg = param[0]
+    msg = param[0].decode()
     addr = param[1]
     demsg = msg.split("#")
     word_1 = str(demsg[0].lower()).strip()
@@ -30,9 +30,9 @@ def compute_ws(param):
         ws = g_wv_model.similarity(word_1, word_2)
     else:
         ws = 0
-        print "[ERR]: at least one of the words does not exist: " + word_1 + ", " + word_2
-    print "[DBG]: " + word_1 + ":" + word_2 + ":" + str(ws)
-    g_serv_sock.sendto(str(ws), addr)
+        print("[ERR]: at least one of the words does not exist: " + word_1 + ", " + word_2)
+    print("[DBG]: " + word_1 + ":" + word_2 + ":" + str(ws))
+    g_serv_sock.sendto(str(ws).encode(), addr)
 
 def main():
     global g_wv_model
@@ -41,7 +41,7 @@ def main():
     g_serv_sock.bind(("", SERV_PORT))
     t_pool = Pool(500)
     load_nasari_w2v()
-    print "[DBG]: NASARI model loaded in."
+    print("[DBG]: NASARI model loaded in.")
     #print g_wv_model['customer']
     #print g_wv_model['notice']
     while True:
@@ -49,7 +49,7 @@ def main():
        param = (msg, addr)
        l_param = list()
        l_param.append(param)
-       print l_param
+       print(l_param)
        t_pool.map(compute_ws, l_param)
 
 main()

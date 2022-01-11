@@ -20,9 +20,13 @@ import time
 import numpy
 import logging
 import sys
+from itertools import combinations
+
 sys.path.insert(1, '/home/mf3jh/workspace/lib/lexvec/lexvec/python/lexvec/')
 import model as lexvec
 import scipy.spatial.distance as scipyd
+# from itertools import combinations
+from scipy import special
 
 LEXVEC_MODEL_PATH = '%s/workspace/lib/lexvec/' % os.environ['HOME'] + 'lexvec.commoncrawl.300d.W+C.pos.vectors'
 g_lexvec_model = None
@@ -31,13 +35,13 @@ NODE_ID_COUNTER = 0
 WORD_SIM_THRESHOLD_ADW = 0.5
 WORD_SIM_THRESHOLD_NASARI = 0.5
 WORD_SIM_THRESHOLD_NASARI_N = 0.5
-WORD_SIM_THRESHOLD_LEXVEC = 0.4
-WORD_SIM_THRESHOLD_LEXVEC_N = 0.4
+WORD_SIM_THRESHOLD_LEXVEC = 0.5
+WORD_SIM_THRESHOLD_LEXVEC_N = 0.5
 SEND_PORT_ADW = 8606
 SEND_PORT_NASARI = 8306
 SEND_ADDR_ADW = 'localhost'
 SEND_ADDR_NASARI = 'localhost'
-MULTI_WS_SERV = True
+MULTI_WS_SERV = False
 MULTI_WS_SERV_MOD = 2
 RAND_SEED = 0
 # the other option is 'adw'
@@ -46,7 +50,9 @@ WORD_SIM_MODE = 'lexvec'
 # WORD_SIM_MODE = 'adw'
 # WORD_SIM_MODE = 'adw_tag'
 # WORD_SIM_MODE = 'adw_offline'
-DB_CONN_STR = '/home/{0}/workspace/data/docsim/20news50short10.db'.format(os.environ['USER'])
+# DB_CONN_STR = '/home/{0}/workspace/data/docsim/20news50short10.db'.format(os.environ['USER'])
+DB_CONN_STR = '/home/{0}/workspace/data/docsim/bbc.db'.format(os.environ['USER'])
+# DB_CONN_STR = '/home/{0}/workspace/data/docsim/leefixsw.db'.format(os.environ['USER'])
 # used for lee vs leebg
 BGDB_CONN_STR = '/home/{0}/workspace/data/leebgfixsw.db'.format(os.environ['USER'])
 # used for Li65 sentence comparison
@@ -72,8 +78,11 @@ SICK_COL2_CONN_STR = '/home/{0}/workspace/data/docsim/sick/col2.db'.format(os.en
 # noner = no ner filtering
 # ssum = sum sim
 # lem = use lemma instead of word for word sim
+# pcomb = use phrase pairs to compute similarity weights
+# cycw = use harmonic mean cycle weights
 # test = only for test use
-OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/docsim/sick_lexvec_40_rmswcbwexpws_w3-3/'.format(os.environ['USER'])
+# sigm = use sigmoid to weights
+OUT_CYCLE_FILE_PATH = '/home/{0}/workspace/data/docsim/bbc_lexvec_50_rmswcbwexpwspcomb_w3-3/'.format(os.environ['USER'])
 # CYC_SIG_PARAM 1 and 2 are used by exp(param1/(w1^param2 + w2^param2))
 CYC_SIG_PARAM_1 = 3.0
 CYC_SIG_PARAM_2 = 3.0
@@ -98,11 +107,11 @@ PROC_BATCH_SIZE = 10
 # use simple cycles instead of min cycle basis
 SIMPLE_CYCLES = False
 # swtich for lee and 20news and reuters and bbc
-LEE = False
+LEE = True
 # switch for lee vs leebg
 LEE_VS_LEEBG = False
 # switch for Li65 and STS and SICK
-LI65 = True
+LI65 = False
 # swthich for msr
 MSR = False
 MSR_SENT_PAIR_FILE = '/home/{0}/workspace/data/msr/msr_sim.txt'.format(os.environ['USER'])
@@ -142,6 +151,7 @@ def fillDocPairDict(doc1, doc2):
 # leaf format: [s_i]:L:[word]#[synset_1]+...+[synset_2]#[token_idx]#[ner]#[pos]#[lemma]:[uni_idx]
 def treestr_to_graph(treestr, id):
     ret_graph = nx.Graph()
+    ret_digraph = nx.DiGraph()
     tree = Tree.fromstring(treestr)
     # checkTree(tree, '0')
     global NODE_ID_COUNTER
@@ -169,9 +179,10 @@ def treestr_to_graph(treestr, id):
             else:
                 ret_graph.add_node(end, type='node')
             ret_graph.add_edge(start, end.strip(), weight=1, type='intra', cb_weight=1)
+            ret_digraph.add_edge(start, end.strip(), weight=1, type='intra', cb_weight=1)
     # print "tree_str_to_graph:"
     # print ret_graph.nodes
-    return ret_graph
+    return ret_graph, ret_digraph
 
 
 def checkTree(tree, id):
@@ -257,7 +268,6 @@ def send_wordsim_request(mode, input_1, input_2):
             send_port += numpy.random.randint(MULTI_WS_SERV_MOD)
             # print "[DBG]: connecting port %s" % send_port
     elif mode == 'tt':
-
         send_str = mode + '#' + input_1 + '#' + input_2
         send_port = SEND_PORT_ADW
         if MULTI_WS_SERV:
@@ -463,12 +473,12 @@ def find_inter_edges(tree_1, tree_2):
 
 
 def treestr_pair_to_graph(treestr_1, treestr_2, id_1, id_2):
-    graph_1 = treestr_to_graph(treestr_1, id_1)
-    graph_2 = treestr_to_graph(treestr_2, id_2)
+    graph_1, digraph_1 = treestr_to_graph(treestr_1, id_1)
+    graph_2, digraph_2 = treestr_to_graph(treestr_2, id_2)
     inter_edges = find_inter_edges(graph_1, graph_2)
     ret_graph = nx.compose(graph_1, graph_2)
     ret_graph.add_edges_from(inter_edges)
-    return ret_graph, inter_edges, graph_1, graph_2
+    return ret_graph, inter_edges, graph_1, graph_2, digraph_1, digraph_2
 
 
 def get_tags_n_leaves(cycle):
@@ -610,6 +620,10 @@ def find_simple_cycles(graph, tree_1, tree_2):
     return l_ret_cycles
 
 
+def my_sigmoid(x):
+    return 1 / (1 + math.exp(-x))
+
+
 def cal_cycle_weight(cycle, inter_edges):
     s1_nodes, s2_nodes = get_tags_n_leaves(cycle)
     if len(s1_nodes["leaves"]) > 2 or len(s2_nodes["leaves"]) > 2:
@@ -627,6 +641,7 @@ def cal_cycle_weight(cycle, inter_edges):
         arch_weight = math.exp(- (math.pow(max(w1, w2) - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
     else:
         arch_weight = math.exp(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
+        # arch_weight = my_sigmoid(CYC_SIG_PARAM_1 / (math.pow(w1, CYC_SIG_PARAM_2) + math.pow(w2, CYC_SIG_PARAM_2)))
     # arch_weight_1  = math.exp(- (math.pow(w1 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
     # arch_weight_2  = math.exp(- (math.pow(w2 - CYC_SIG_PARAM_3, 2)) / CYC_SIG_PARAM_4)
 
@@ -653,37 +668,115 @@ def cal_cycle_weight(cycle, inter_edges):
 
     # ret = arch_weight * inter_weight
     ret = arch_weight * math.exp(inter_weight * 2)
+    # ret = math.exp(inter_weight * 2)
     # print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(math.exp(inter_weight*2))
     # print "[DBG]: arc = " + str(arch_weight) + " ws = " + str(inter_weight)
     if arch_weight == 1.0:
         print "[DBG]: w1 = %d" % w1
         print "[DBG]: w2 = %d" % w2
-    return ret, s1_nodes["leaves"] + s2_nodes["leaves"]
+    return ret, s1_nodes["leaves"], s2_nodes["leaves"]
+
+
+def find_path_len_between_leaves(w1, w2, ditree):
+    if w1 == w2:
+        return 0
+    parent_1 = ditree.predecessors(w1)
+    parent_2 = ditree.predecessors(w1)
+    if len(parent_1) != 1 or len(parent_2) != 1:
+    #     # logging.error('Tree is incorrect, %s, %s.' % (w1, w2))
+        raise Exception('Tree is incorrect, %s, %s.' % (w1, w2))
+    path_len = 0
+    while True:
+        if parent_1[0] == parent_2[0]:
+co              return path_len
+        parent_1_tmp = ditree.predecessors(parent_1[0])
+        if len(parent_1_tmp) != 0:
+            parent_1 = parent_1_tmp
+        parent_2_tmp = ditree.predecessors(parent_2[0])
+        if len(parent_2_tmp) != 0:
+            parent_2 = parent_2_tmp
+
+
+def compute_cycle_sim(sim_1, sim_2, arc_1, arc_2):
+    cycle_sim = 0.0
+    w_sim = min([sim_1, sim_2])
+    arc_sig = CYC_SIG_PARAM_1 / (math.pow(arc_1, CYC_SIG_PARAM_2) + math.pow(arc_2, CYC_SIG_PARAM_2))
+    
+
+def sim_from_tree_pair_graph_all_basic_cycles(inter_edges, graph, ditree_1, ditree_2):
+    l_inter_edge_pairs = list(combinations(inter_edges, 2))
+    logging.debug('%s inter edge pairs.' % len(l_inter_edge_pairs))
+    l_cycle_sim = []
+    for inter_edge_pair in l_inter_edge_pairs:
+        inter_edge_1 = inter_edge_pair[0]
+        s1_w1 = None
+        s2_w1 = None
+        if inter_edge_1[0][:2] == 's1':
+            s1_w1 = inter_edge_1[0]
+            s2_w1 = inter_edge_1[1]
+        else:
+            s2_w1 = inter_edge_1[0]
+            s1_w1 = inter_edge_1[1]
+        s1_w2 = None
+        s2_w2 = None
+        inter_edge_2 = inter_edge_pair[1]
+        if inter_edge_2[0][:2] == 's1':
+            s1_w2 = inter_edge_2[0]
+            s2_w2 = inter_edge_2[1]
+        else:
+            s1_w2 = inter_edge_2[0]
+            s2_w2 = inter_edge_2[1]
+        arc_1 = find_path_len_between_leaves(s1_w1, s1_w2, ditree_1)
+        arc_2 = find_path_len_between_leaves(s2_w1, s2_w2, ditree_2)
+        sim_1 = inter_edge_1[2]['weight']
+        sim_2 = inter_edge_2[2]['weight']
+        cycle_sim = compute_cycle_sim(sim_1, sim_2, arc_1, arc_2)
+
 
 
 def sim_from_tree_pair_graph(inter_edges, graph, tree_1, tree_2):
     cycle_weights = []
     words_with_tags = []
     if len(inter_edges) < 2:
-        return 0, [], []
+        return (0, [], [], 0)
     if SIMPLE_CYCLES:
         min_cycle_basis = find_simple_cycles(graph, tree_1, tree_2)
     else:
         min_cycle_basis = find_min_cycle_basis(graph, tree_1, tree_2)
+    s_s1_leaves = set()
+    s_s2_leaves = set()
+    l_s1_phrases = []
+    l_s2_phrases = []
     for cycle in min_cycle_basis:
         if len(cycle) < 3:
             logging.error("[ERR]: Invalid cycle in the basis: ")
             logging.error(cycle)
             continue
-        cw, leaves = cal_cycle_weight(cycle, inter_edges)
+        cw, s1_leaves, s2_leaves = cal_cycle_weight(cycle, inter_edges)
         cycle_weights.append(cw)
-        words_with_tags = words_with_tags + leaves
-    return sum(cycle_weights), min_cycle_basis, words_with_tags
+        words_with_tags = words_with_tags + s1_leaves + s2_leaves
+        s_s1_leaves = s_s1_leaves.union(set(s1_leaves))
+        s_s2_leaves = s_s2_leaves.union(set(s2_leaves))
+        if set(s1_leaves) not in l_s1_phrases:
+            l_s1_phrases.append(set(s1_leaves))
+        if set(s2_leaves) not in l_s2_phrases:
+            l_s2_phrases.append(set(s2_leaves))
+    cnt_tree_1_leaves = len([node[0] for node in tree_1.nodes(data='type') if node[1] == 'leaf'])
+    cnt_tree_2_leaves = len([node[0] for node in tree_2.nodes(data='type') if node[1] == 'leaf'])
+    # pair_len_weight = 2.0 / (cnt_tree_1_leaves / len(s_s1_leaves) + cnt_tree_2_leaves / len(s_s2_leaves))
+    pair_len_weight = 2.0 / \
+    (
+            1 / (len(l_s1_phrases) / (special.comb(cnt_tree_1_leaves, 2) + cnt_tree_1_leaves)) +
+            1 / (len(l_s2_phrases) / (special.comb(cnt_tree_2_leaves, 2) + cnt_tree_2_leaves))
+    )
+    logging.debug('pair_len_weight = %s' % pair_len_weight)
+    return (sum(cycle_weights), min_cycle_basis, words_with_tags, pair_len_weight)
 
 
 def sent_pair_sim(sent_treestr_1, sent_treestr_2):
-    tp_graph, inter_edges, tree_1, tree_2 = treestr_pair_to_graph(sent_treestr_1, sent_treestr_2, 's1', 's2')
-    sim, min_cycle_basis, words_with_tags = sim_from_tree_pair_graph(inter_edges, tp_graph, tree_1, tree_2)
+    tp_graph, inter_edges, tree_1, tree_2, ditree_1, ditree_2 = treestr_pair_to_graph(sent_treestr_1, sent_treestr_2, 's1', 's2')
+    (sim, min_cycle_basis, words_with_tags, pair_len_weight) = sim_from_tree_pair_graph(inter_edges, tp_graph, tree_1,
+                                                                                        tree_2)
     words = []
     for word in words_with_tags:
         words.append(lowercase_word_by_ner(word))
@@ -701,7 +794,7 @@ def sent_pair_sim(sent_treestr_1, sent_treestr_2):
         pass
     else:
         return 0, [], words
-    return sim, min_cycle_basis, words
+    return sim * pair_len_weight, min_cycle_basis, words
 
 
 def count_cycles_and_record(doc_1, doc_2, cycle_count):
@@ -792,7 +885,7 @@ def doc_pair_sim(doc1, doc2):
         print "[DBG]: divgrad_cyc_count = "
         print divgrad_cyc_count
         print "[DBG]: cyc_dist_weight = %s, old_doc_sim = %s, new_doc_sim = %s" % (
-        cyc_dist_weight, old_doc_sim, doc_sim)
+            cyc_dist_weight, old_doc_sim, doc_sim)
         print "===================="
     if SAVE_CYCLES:
         out_json = {'sim': doc_sim, 'sentence_pair': sentence_pair, 'word_list': list(set(doc_word_list))}
@@ -845,7 +938,8 @@ def text_sim(db_cur):
         for j, doc2 in enumerate(rows):
             if os.path.exists(
                     OUT_CYCLE_FILE_PATH + "%s#%s.json" % (doc1[0].replace('/', '_'), doc2[0].replace('/', '_'))):
-                logging.error("[%s-%s]%s#%s.json already exists." % (i, j, doc1[0].replace('/', '_'), doc2[0].replace('/', '_')))
+                logging.error(
+                    "[%s-%s]%s#%s.json already exists." % (i, j, doc1[0].replace('/', '_'), doc2[0].replace('/', '_')))
                 continue
             if i < j:
                 if WORD_SIM_MODE == 'adw_offline':
@@ -860,10 +954,10 @@ def text_sim(db_cur):
                 # if proc_id >= PROC_BATCH_SIZE:
                 #     proc_batch += 1
                 #     proc_id = 0
-                    # print "[DBG]: task count = " + str(proc_batch * PROC_BATCH_SIZE + proc_id)
-                    # print "[DBG]: sim array ="
+                # print "[DBG]: task count = " + str(proc_batch * PROC_BATCH_SIZE + proc_id)
+                # print "[DBG]: sim array ="
                 # if len(sim_procs) >= MAX_PROC:
-                    # print "[DBG]: cool down 1"
+                # print "[DBG]: cool down 1"
                 current_proc_count = len(sim_procs)
                 after_cool_down_proc_count = sim_procs_cool_down(sim_procs, MAX_PROC)
                 done_proc_count += (current_proc_count - after_cool_down_proc_count)

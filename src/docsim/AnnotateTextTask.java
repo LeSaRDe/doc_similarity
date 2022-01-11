@@ -29,8 +29,6 @@ class AnnotateTextTask extends Thread
 
     public void run()
     {
-        m_corenlp.getDecomposedSentences();
-        m_corenlp.getConstituentTrees();
         List<DeSentence> l_sentences = m_corenlp.getDeSentences();
         /*
          * If we don't use Babelfy, then we don't even compile Babelfy
@@ -45,11 +43,30 @@ class AnnotateTextTask extends Thread
             }
         }
         */
-        String sent_str = String.join("|", l_sentences.stream().map(desent->desent.toTaggedSentenceString()).collect(Collectors.toList()));
-        String tree_str = String.join("|", l_sentences.stream().map(desent->desent.getPrunedTree(true).toString()).collect(Collectors.toList()));
-        //System.out.println("[DBG]: parse_trees = " + tree_str);
-        m_in_utrec.settaggedtext(sent_str);
-        m_in_utrec.setparsetrees(tree_str);
+        ArrayList<String> l_tasks = new ArrayList(Arrays.asList(Constants.ANN_TASKS.split("\\|")));
+        System.out.println("[DBG]: AnnotateTextTask: run():" + l_tasks.toString());
+        if(l_tasks.contains(Constants.ANN_TASK_TAG))
+        {
+            m_corenlp.getDecomposedSentence s();
+            String sent_str = String.join("|", l_sentences.stream().map(desent->desent.toTaggedSentenceString()).collect(Collectors.toList()));
+            m_in_utrec.settaggedtext(sent_str);
+            System.out.println("tagged text is set.");
+        }
+        if(l_tasks.contains(Constants.ANN_TASK_CON))
+        {
+            m_corenlp.getConstituentTrees();
+            String tree_str = String.join("|", l_sentences.stream().map(desent->desent.getPrunedTree(true).toString()).collect(Collectors.toList()));
+            m_in_utrec.setparsetrees(tree_str);
+            System.out.println("constituency is set.");
+        }
+        if(l_tasks.contains(Constants.ANN_TASK_DEP))
+        {
+            m_corenlp.getDependencyTrees();
+            String dep_phrases_str = String.join("|", l_sentences.stream().map(desent->desent.getDepPhrasesString()).collect(Collectors.toList()));
+            m_in_utrec.setdepphrases(dep_phrases_str);
+            System.out.println("depparse phrases are set.");
+        }
+
         m_utin.addUpdatedAnnotateTextRec(m_in_utrec);
         m_corenlp.shutdownCoreNLPClient();
         m_corenlp = null;

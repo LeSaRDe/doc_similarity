@@ -3,7 +3,7 @@ import json
 
 #run_name = 'li65_nasari_30_rmswcbwexpws_w3-3'
 #run_name = 'sts_adw_10_rmswcbwexpws_w3-3'
-run_name = 'sick_lexvec_40_rmswcbwexpws_w3-3'
+run_name = 'sick_lexvec_50_rmswcbwexpwspcomb_w3-3'
 
 
 def main():

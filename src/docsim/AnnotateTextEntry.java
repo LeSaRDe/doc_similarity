@@ -17,8 +17,26 @@ class AnnotateTextEntry
         {
             // we read in all doc_id's here then send them to AnnotateText to
             // be annotated in parallel.
-            Connection db_conn = DriverManager.getConnection(Constants.ANNTXT_DB_CONNSTR); 
-            String query_str = String.format("SELECT doc_id FROM %s WHERE parse_trees is NULL ORDER BY doc_id", Constants.ANNTXT_DB_TB_DOCS);
+            Connection db_conn = DriverManager.getConnection(Constants.ANNTXT_DB_CONNSTR);
+            ArrayList<String> l_tasks = new ArrayList(Arrays.asList(Constants.ANN_TASKS.split("\\|")));
+            ArrayList<String> l_where_clauses = new ArrayList<String>();
+            if(l_tasks.contains(Constants.ANN_TASK_TAG))
+            {
+                l_where_clauses.add("tagged_text is NULL");
+            }
+            if(l_tasks.contains(Constants.ANN_TASK_CON))
+            {
+                l_where_clauses.add("parse_trees is NULL");
+            }
+            if(l_tasks.contains(Constants.ANN_TASK_DEP))
+            {
+                l_where_clauses.add("depparse_trees is NULL");
+            }
+            String where_clause = String.join(" OR ", l_where_clauses);
+            String query_str = String.format("SELECT doc_id FROM %s WHERE " + where_clause + " ORDER BY doc_id", Constants.ANNTXT_DB_TB_DOCS);
+            System.out.println("[DBG]: AnnotateTextEntry:main(): query_str = " + query_str);
+
+//            String query_str = String.format("SELECT doc_id FROM %s WHERE parse_trees is NULL ORDER BY doc_id", Constants.ANNTXT_DB_TB_DOCS);
             //String query_str = String.format("SELECT doc_id FROM %s ORDER BY doc_id LIMIT 2", Constants.ANNTXT_DB_TB_DOCS);
 
             // DBG
@@ -78,7 +96,7 @@ class AnnotateTextEntry
         }
         catch(Exception e)
         {
-            System.out.println("[ERR]: " + e.toString());
+            System.out.println("[ERR]: AnnotateTextEntry:main(): " + e.toString());
         } 
     }
 }

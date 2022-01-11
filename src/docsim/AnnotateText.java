@@ -16,7 +16,7 @@ class AnnotateText
     /**
      * Class Members
      */
-    private Connection m_db_conn = null;;
+    private Connection m_db_conn = null;
     private List<AnnotateTextRec> m_l_utrec = null;
     private List<AnnotateTextTask> m_l_utask = null;
     private ThreadPoolExecutor m_pool;
@@ -153,7 +153,7 @@ class AnnotateText
                 }
                 System.out.println("[DBG]: current doc_id = " + m_l_docids.get(i));
                 AnnotateTextTask new_task = new AnnotateTextTask(this, m_db_conn,
-                            new AnnotateTextRec(m_l_docids.get(i), rs.getString("pre_ner"), null, null));
+                            new AnnotateTextRec(m_l_docids.get(i), rs.getString("pre_ner"), null, null, null));
                 m_l_utask.add(new_task);
                 m_pool.execute(new_task);
                 m_task_count += 1;
@@ -192,7 +192,24 @@ class AnnotateText
         {
             //System.out.println("[DBG]: Enter commit...");
             ArrayList<Integer> l_rm = new ArrayList<Integer>();
-            String update_str = "UPDATE " + Constants.ANNTXT_DB_TB_DOCS + " SET tagged_text = ?, parse_trees = ? WHERE doc_id = ?";
+            ArrayList<String> l_tasks = new ArrayList(Arrays.asList(Constants.ANN_TASKS.split("\\|")));
+            ArrayList<String> l_set_clauses = new ArrayList<String>();
+            // (!)
+            if(l_tasks.contains(Constants.ANN_TASK_TAG))
+            {
+                l_set_clauses.add("tagged_text=?");
+            }
+            if(l_tasks.contains(Constants.ANN_TASK_CON))
+            {
+                l_set_clauses.add("parse_trees=?");
+            }
+            if(l_tasks.contains(Constants.ANN_TASK_DEP))
+            {
+                l_set_clauses.add("depparse_trees=?");
+            }
+            String set_clause = String.join(", ", l_set_clauses);
+            String update_str = "UPDATE " + Constants.ANNTXT_DB_TB_DOCS + " SET " + set_clause + " WHERE doc_id=?";
+//            String update_str = "UPDATE " + Constants.ANNTXT_DB_TB_DOCS + " SET tagged_text = ?, parse_trees = ? WHERE doc_id = ?";
             try
             (
                 PreparedStatement st = m_db_conn.prepareStatement(update_str);
@@ -203,13 +220,35 @@ class AnnotateText
                     //System.out.println("[DBG]: prepare sql:" + st);
                     for(AnnotateTextRec utc : m_l_utrec)
                     {
-                        st.setString(1, utc.gettaggedtext());
-                        st.setString(2, utc.getparsetrees());
-                        st.setString(3, utc.getdocid());
+                        int set_clause_idx = 0;
+                        /*
+                         * CAUTIOIN:
+                         * Keep the order of the following "if" consistent with the above (!) part.
+                         */
+                        if(l_tasks.contains(Constants.ANN_TASK_TAG))
+                        {
+                            set_clause_idx += 1;
+                            st.setString(set_clause_idx, utc.gettaggedtext());
+                        }
+                        if(l_tasks.contains(Constants.ANN_TASK_CON))
+                        {
+                            set_clause_idx += 1;
+                            st.setString(set_clause_idx, utc.getparsetrees());
+                        }
+                        if(l_tasks.contains(Constants.ANN_TASK_DEP))
+                        {
+                            set_clause_idx += 1;
+                            st.setString(set_clause_idx, utc.getdepphrases());
+                        }
+//                        st.setString(1, utc.gettaggedtext());
+//                        st.setString(2, utc.getparsetrees());
+                        set_clause_idx += 1;
+                        st.setString(set_clause_idx, utc.getdocid());
                         st.executeUpdate();
 
                         l_rm.add(m_l_utrec.indexOf(utc));
-                        System.out.println("[DBG]: commit rec: " + utc.gettaggedtext() + ":" + utc.getparsetrees() + ":" + utc.getdocid());
+                        System.out.println("[DBG]: commit rec: " + utc.gettaggedtext() + ":" + utc.getparsetrees()
+                                + ":" + utc.getdocid() + ":" + utc.getdepphrases());
                     }
                     System.out.println("[DBG]: commit to DB...");
                     m_db_conn.commit();
@@ -218,6 +257,7 @@ class AnnotateText
             catch(Exception e)
             {
                 System.out.println("[ERR]: commitUserTextRecs: " + e.toString());
+                System.out.println(update_str);
             }
 
             Set<Integer> hs = new HashSet<Integer>();

@@ -12,6 +12,7 @@ import java.util.stream.*;
 
 import edu.stanford.nlp.trees.*;
 import edu.stanford.nlp.ling.*;
+import edu.stanford.nlp.semgraph.*;
 
 /**
  * This class is playing a proxy role between CoreNLP and Babel.
@@ -40,6 +41,7 @@ public class DeSentence
                         "VB", "VBD", "VBG", "VBN", "VBP", "VBZ", "VP",
                         "JJ", "JJR", "JJS", "RB", "RBR", "RBS", "RP"};
     private char[] m_constituent_tags_inits = {'S', 'N', 'A', 'V', 'J', 'R', 'P', 'W', 'C', 'F', 'I', 'L', 'E', 'M', 'U'};
+    private String[] m_dependency_tags = {"nsubj", "dobj", "xcomp", "ccomp", "csubj", "nmod", "appos"};
 
     /**
      * Class Members
@@ -47,6 +49,8 @@ public class DeSentence
     private String m_orig_sentence;
     private ArrayList<DeToken> m_l_tokens;
     private Tree m_constituent_tree;
+    private SemanticGraph m_dependency_tree;
+    private ArrayList<String> m_l_raw_deps;
     private Tree m_tagged_tree;
     private Tree m_tagged_pruned_tree;
     private Tree m_pruned_tree;
@@ -63,6 +67,8 @@ public class DeSentence
         m_orig_sentence = orig_sentence;
         m_l_tokens = new ArrayList<DeToken>();
         m_constituent_tree = null;
+        m_dependency_tree = null;
+        m_l_raw_deps = null;
         m_tagged_tree = null;
         m_pruned_tree = null;
         m_tagged_pruned_tree = null;
@@ -104,6 +110,52 @@ public class DeSentence
     public Tree getConstituentTree()
     {
         return m_constituent_tree;
+    }
+
+    public void setDependencyTree(SemanticGraph c_tree)
+    {
+        m_dependency_tree = c_tree;
+    }
+
+    public SemanticGraph getDependencyTree()
+    {
+        return m_dependency_tree;
+    }
+
+    // string format: governor:dependent:relation#governor:dependent:relation#...
+    public String getDepPhrasesString()
+    {
+        m_l_raw_deps = new ArrayList<String>();
+        for(SemanticGraphEdge dep_edge : m_dependency_tree.edgeIterable())
+        {
+            /*
+             * Caution!
+             * be carefull about ':' this separator. ':' is used by us to separate the three fields for a dependency,
+             * but also it is used by CoreNLP to separate major relation and sub relation, e.g. nmod:tmod.
+             */
+            String phrase_str = dep_edge.getGovernor().word() + ":" + dep_edge.getDependent().word() + ":"
+                    + dep_edge.getRelation().toString();
+            m_l_raw_deps.add(phrase_str);
+//            System.out.println(dep_edge.getGovernor().word() + ":" + dep_edge.getDependent().word() + ":"
+//                    + dep_edge.getRelation().toString());
+        }
+        return String.join("#", m_l_raw_deps);
+    }
+
+    public String getCleanDepPhrasesString()
+    {
+        if(m_l_raw_deps == null)
+        {
+            getDepPhrasesString();
+        }
+        for(String raw_phrase : m_l_raw_deps)
+        {
+            String[] l_fields = raw_phrase.split(":");
+            String governor = l_fields[0];
+            String dependent = l_fields[1];
+            String relation = l_fields[2];
+        }
+        return "";
     }
 
     // this function will attach the sense offsets and pos tags to each leaf.
